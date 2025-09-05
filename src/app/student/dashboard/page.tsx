@@ -12,7 +12,7 @@ import { getStudentClasses } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { User, QrCode } from 'lucide-react';
 import type { StudentProfile, Class } from '@/lib/data';
 
 
@@ -82,8 +82,11 @@ export default function StudentDashboard() {
          </div>
       </Header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
+        <div className="flex items-center justify-between">
           <h1 className="font-semibold font-headline text-lg md:text-2xl">Your Classes</h1>
+           <Button asChild>
+                <Link href="/student/scan"><QrCode className="mr-2 h-4 w-4" /> Scan QR</Link>
+            </Button>
         </div>
          {isLoadingClasses ? (
            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
