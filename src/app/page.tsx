@@ -1,3 +1,4 @@
+
 import { ArrowRight, BookUser, QrCode, User } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -36,11 +37,11 @@ export default function Home() {
                 </div>
               </div>
               <img
-                src="https://picsum.photos/600/400"
+                src="https://picsum.photos/600/600"
                 width="600"
-                height="400"
+                height="600"
                 alt="Hero"
-                data-ai-hint="classroom technology"
+                data-ai-hint="modern classroom"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
               />
             </div>
@@ -92,7 +93,7 @@ export default function Home() {
                 width="550"
                 height="310"
                 alt="Feature"
-                data-ai-hint="mobile app interface"
+                data-ai-hint="student using phone"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover object-center sm:w-full lg:order-last"
               />
             </div>
