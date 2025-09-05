@@ -41,8 +41,10 @@ export default function TeacherDashboard() {
         setIsLoadingClasses(false);
       });
       return () => unsubscribe();
+    } else if (!loading) {
+      setIsLoadingClasses(false);
     }
-  }, [user]);
+  }, [user, loading]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -52,7 +54,12 @@ export default function TeacherDashboard() {
   if (loading || !user) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Header />
+        <Header>
+             <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-24" />
+            </div>
+        </Header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <Skeleton className="h-8 w-48 mb-4" />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

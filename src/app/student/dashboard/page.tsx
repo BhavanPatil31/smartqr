@@ -30,6 +30,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const fetchProfileAndClasses = async () => {
+      setIsLoadingClasses(true);
       if (user) {
         const docRef = doc(db, 'students', user.uid);
         const docSnap = await getDoc(docRef);
@@ -39,18 +40,21 @@ export default function StudentDashboard() {
           const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
           setClasses(studentClasses);
         }
-        setIsLoadingClasses(false);
       }
+      setIsLoadingClasses(false);
     };
-    fetchProfileAndClasses();
-  }, [user]);
+
+    if (!loading) {
+        fetchProfileAndClasses();
+    }
+  }, [user, loading]);
 
   const handleLogout = async () => {
     await auth.signOut();
     router.push('/');
   };
 
-  if (loading || !user || !profile || isLoadingClasses) {
+  if (loading || !profile || isLoadingClasses) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <Header>
