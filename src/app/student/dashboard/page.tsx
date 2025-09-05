@@ -30,18 +30,39 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const fetchProfileAndClasses = async () => {
+      if (!user) {
+         setIsLoadingClasses(false);
+         return;
+      };
+
       setIsLoadingClasses(true);
-      if (user) {
+      try {
         const docRef = doc(db, 'students', user.uid);
         const docSnap = await getDoc(docRef);
+        
         if (docSnap.exists()) {
           const studentProfile = docSnap.data() as StudentProfile;
           setProfile(studentProfile);
-          const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
-          setClasses(studentClasses);
+          
+          // Only fetch classes if department and semester are set
+          if (studentProfile.department && studentProfile.semester) {
+            const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
+            setClasses(studentClasses);
+          } else {
+            // No department/semester, so no classes to show
+            setClasses([]);
+          }
+        } else {
+            // Profile doesn't exist yet, treat as empty
+            setProfile(null);
+            setClasses([]);
         }
+      } catch (error) {
+          console.error("Failed to fetch student data:", error);
+          setClasses([]); // Ensure we don't get stuck in a loading state on error
+      } finally {
+        setIsLoadingClasses(false);
       }
-      setIsLoadingClasses(false);
     };
 
     if (!loading) {
@@ -54,7 +75,7 @@ export default function StudentDashboard() {
     router.push('/');
   };
 
-  if (loading || !profile || isLoadingClasses) {
+  if (loading || isLoadingClasses) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <Header>
@@ -97,20 +118,14 @@ export default function StudentDashboard() {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-2xl">Welcome, {profile.fullName.split(' ')[0]}!</h1>
+            <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
             <p className="text-muted-foreground">Here are the classes for your semester.</p>
           </div>
            <Button asChild>
                 <Link href="/student/scan"><QrCode className="mr-2 h-4 w-4" /> Scan QR Code</Link>
             </Button>
         </div>
-         {isLoadingClasses ? (
-           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full" />
-            ))}
-          </div>
-        ) : classes.length > 0 ? (
+         {classes.length > 0 ? (
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {classes.map((classItem) => (
               <ClassCard key={classItem.id} classItem={classItem} userRole="student" />
@@ -123,8 +138,11 @@ export default function StudentDashboard() {
                 No classes found
               </h3>
               <p className="text-sm text-muted-foreground">
-                There are currently no classes scheduled for your department and semester.
+                Please complete your profile or check if classes have been assigned.
               </p>
+               <Button asChild className="mt-4">
+                <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
+              </Button>
             </div>
           </div>
         )}
