@@ -50,16 +50,24 @@ export default function StudentDashboard() {
     router.push('/');
   };
 
-  if (loading || !user || !profile) {
+  if (loading || !user || !profile || isLoadingClasses) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
-        <Header />
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <Header>
+          <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+          </div>
+        </Header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <div className="flex items-center justify-between">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-10 w-24" />
+            <div className='space-y-2'>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-5 w-64" />
+            </div>
+            <Skeleton className="h-10 w-36" />
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[...Array(4)].map((_, i) => (
               <Skeleton key={i} className="h-48 w-full" />
             ))}

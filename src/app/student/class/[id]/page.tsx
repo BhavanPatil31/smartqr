@@ -41,7 +41,18 @@ export default function StudentClassPage() {
         <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="w-full max-w-2xl space-y-4">
                 <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-64 w-full" />
+                <Card className="w-full">
+                    <CardHeader>
+                        <Skeleton className="h-8 w-3/4 mx-auto" />
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center space-y-6 pt-6">
+                        <div className="space-y-2 text-center w-full">
+                            <Skeleton className="h-5 w-1/2 mx-auto" />
+                            <Skeleton className="h-5 w-2/3 mx-auto" />
+                        </div>
+                         <Skeleton className="h-12 w-full max-w-xs" />
+                    </CardContent>
+                </Card>
             </div>
         </main>
       </div>

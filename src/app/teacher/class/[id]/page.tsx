@@ -66,14 +66,43 @@ export default function TeacherClassPage() {
        <div className="flex min-h-screen w-full flex-col">
           <Header />
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-             <Skeleton className="h-10 w-48" />
+             <div className="space-y-2">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-5 w-1/2" />
+             </div>
              <div className="grid gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-6">
-                    <Skeleton className="h-96 w-full" />
-                    <Skeleton className="h-48 w-full" />
+                    <Card>
+                        <CardHeader>
+                             <Skeleton className="h-6 w-40 mb-2" />
+                             <Skeleton className="h-4 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-48 w-full" />
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-48 mb-2" />
+                            <Skeleton className="h-4 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                           <Skeleton className="h-10 w-56" />
+                        </CardContent>
+                    </Card>
                 </div>
                 <div className="lg:col-span-1">
-                    <Skeleton className="h-80 w-full" />
+                    <Card>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-32 mb-2" />
+                            <Skeleton className="h-4 w-3/4" />
+                        </CardHeader>
+                        <CardContent className="flex flex-col items-center">
+                            <Skeleton className="h-[216px] w-[216px]" />
+                            <Skeleton className="h-4 w-40 mt-4" />
+                        </CardContent>
+                    </Card>
                 </div>
              </div>
           </main>

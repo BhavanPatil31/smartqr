@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, Edit, Mail, Phone, User as UserIcon, Building, LogOut } from 'lucide-react';
+import { ChevronLeft, Edit, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import type { TeacherProfile } from '@/lib/data';
 import { Header } from '@/components/Header';
@@ -90,12 +90,45 @@ export default function TeacherProfilePage() {
   
   if (loading || !profile) {
     return (
-        <div className="min-h-screen bg-muted/40 p-4 md:p-8">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <Skeleton className="h-12 w-48" />
-                <Skeleton className="h-48 w-full rounded-lg" />
-                <Skeleton className="h-80 w-full rounded-lg" />
-            </div>
+        <div className="min-h-screen bg-muted/40">
+            <Header>
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-9 w-44" />
+                    <Skeleton className="h-9 w-24" />
+                </div>
+            </Header>
+            <main className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl space-y-6">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-9 w-48" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Card>
+                    <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
+                        <Skeleton className="h-24 w-24 rounded-full" />
+                        <div className="space-y-2 text-center md:text-left">
+                            <Skeleton className="h-8 w-40" />
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-48" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-7 w-56" />
+                        <Skeleton className="h-4 w-full max-w-md" />
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="space-y-2">
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-10 w-full" />
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            </main>
         </div>
     );
   }
