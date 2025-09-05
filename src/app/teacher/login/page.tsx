@@ -1,5 +1,6 @@
-import { LoginForm } from '@/components/LoginForm';
+
+import { AuthForm } from '@/components/AuthForm';
 
 export default function TeacherLoginPage() {
-  return <LoginForm userType="teacher" />;
+  return <AuthForm userType="teacher" />;
 }

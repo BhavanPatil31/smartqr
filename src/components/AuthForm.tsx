@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from './ui/skeleton';
 
 interface AuthFormProps {
   userType: 'student' | 'teacher';
@@ -24,6 +26,11 @@ export function AuthForm({ userType }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleAuthAction = async (action: 'login' | 'register') => {
     setIsLoading(true);
@@ -68,7 +75,6 @@ export function AuthForm({ userType }: AuthFormProps) {
     setIsLoading(false);
   };
 
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <div className="absolute top-4 left-4">
@@ -78,58 +84,67 @@ export function AuthForm({ userType }: AuthFormProps) {
         </Link>
       </div>
       <Card className="w-full max-w-sm">
-        <Tabs defaultValue="login">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
-          </TabsList>
-          <TabsContent value="login">
-            <CardHeader>
-              <CardTitle className="text-2xl">Student Login</CardTitle>
-              <CardDescription>Enter your email and password to access your dashboard.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('login'); }} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-login">Email</Label>
-                  <Input id="email-login" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-login">Password</Label>
-                  <Input id="password-login" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Logging in...' : 'Login'}
-                </Button>
-              </form>
-            </CardContent>
-          </TabsContent>
-          <TabsContent value="register">
-            <CardHeader>
-              <CardTitle className="text-2xl">Student Registration</CardTitle>
-              <CardDescription>Create an account to get started.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('register'); }} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-register">Email</Label>
-                  <Input id="email-register" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-register">Password</Label>
-                  <Input id="password-register" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
-                </Button>
-              </form>
-            </CardContent>
-          </TabsContent>
-        </Tabs>
+        {!isClient ? (
+          <div className="space-y-4 p-6">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <Tabs defaultValue="login">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+              <CardHeader>
+                <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Login</CardTitle>
+                <CardDescription>Enter your email and password to access your dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('login'); }} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-login">Email</Label>
+                    <Input id="email-login" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password-login">Password</Label>
+                    <Input id="password-login" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
+              </CardContent>
+            </TabsContent>
+            <TabsContent value="register">
+              <CardHeader>
+                <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Registration</CardTitle>
+                <CardDescription>Create an account to get started.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('register'); }} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-register">Email</Label>
+                    <Input id="email-register" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password-register">Password</Label>
+                    <Input id="password-register" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </CardContent>
+            </TabsContent>
+          </Tabs>
+        )}
       </Card>
     </main>
   );
