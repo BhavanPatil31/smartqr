@@ -1,13 +1,14 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AttendanceRecord } from "@/lib/data";
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 
 interface AttendanceTableProps {
-    initialRecords: AttendanceRecord[];
+    records: AttendanceRecord[];
 }
 
-export function AttendanceTable({ initialRecords }: AttendanceTableProps) {
-    const attendanceRecords = initialRecords;
+export function AttendanceTable({ records }: AttendanceTableProps) {
+    // Sort records by timestamp in descending order (newest first)
+    const sortedRecords = [...records].sort((a, b) => b.timestamp - a.timestamp);
 
     return (
         <div className="rounded-lg border">
@@ -16,16 +17,16 @@ export function AttendanceTable({ initialRecords }: AttendanceTableProps) {
                     <TableRow>
                         <TableHead>Student Name</TableHead>
                         <TableHead>USN</TableHead>
-                        <TableHead>Time Marked</TableHead>
+                        <TableHead>Time Marked (IST)</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {attendanceRecords.length > 0 ? (
-                        attendanceRecords.map((record) => (
+                    {sortedRecords.length > 0 ? (
+                        sortedRecords.map((record) => (
                             <TableRow key={record.studentId}>
-                                <TableCell className="font-medium">{record.name}</TableCell>
+                                <TableCell className="font-medium">{record.studentName}</TableCell>
                                 <TableCell>{record.usn}</TableCell>
-                                <TableCell>{format(new Date(record.timestamp), 'HH:mm:ss')}</TableCell>
+                                <TableCell>{format(new Date(record.timestamp), 'HH:mm:ss', { timeZone: 'Asia/Kolkata' })}</TableCell>
                             </TableRow>
                         ))
                     ) : (

@@ -11,10 +11,12 @@ import { SuspiciousActivityChecker } from '@/components/SuspiciousActivityChecke
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Class, AttendanceRecord } from '@/lib/data';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function TeacherClassPage() {
   const params = useParams();
@@ -22,7 +24,15 @@ export default function TeacherClassPage() {
   
   const [classItem, setClassItem] = useState<Class | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setQrCodeUrl(`${window.location.origin}/student/class/${classId}`);
+    }
+  }, [classId]);
+  
   useEffect(() => {
     if (!classId) return;
 
@@ -34,6 +44,21 @@ export default function TeacherClassPage() {
     };
 
     fetchClassData();
+  }, [classId]);
+
+  useEffect(() => {
+    if (!classId) return;
+    
+    const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
+    const attendanceCollectionRef = collection(db, 'classes', classId, 'attendance', todayStr, 'records');
+    const q = query(attendanceCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+      setAttendanceRecords(records);
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
   }, [classId]);
 
   if (loading) {
@@ -61,9 +86,7 @@ export default function TeacherClassPage() {
   }
   
   const today = format(new Date(), 'yyyy-MM-dd');
-  const attendanceRecords: AttendanceRecord[] = []; // This will be updated to fetch from Firestore
-  const qrCodeUrl = `${window.location.origin}/student/class/${classItem.id}`;
-
+  
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
@@ -93,7 +116,7 @@ export default function TeacherClassPage() {
                 <CardDescription>Students who have marked attendance today.</CardDescription>
               </CardHeader>
               <CardContent>
-                <AttendanceTable initialRecords={attendanceRecords} />
+                <AttendanceTable records={attendanceRecords} />
               </CardContent>
             </Card>
 
@@ -121,15 +144,19 @@ export default function TeacherClassPage() {
                 <CardDescription>Students can scan this to mark attendance.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center">
-                 <div className="p-4 bg-white rounded-lg border">
-                    <Image 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrl)}`}
-                        width={200}
-                        height={200}
-                        alt="Class QR Code"
-                        data-ai-hint="QR code"
-                    />
-                 </div>
+                 {qrCodeUrl ? (
+                    <div className="p-4 bg-white rounded-lg border">
+                        <Image 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrl)}`}
+                            width={200}
+                            height={200}
+                            alt="Class QR Code"
+                            data-ai-hint="QR code"
+                        />
+                    </div>
+                 ) : (
+                    <Skeleton className="h-[216px] w-[216px]" />
+                 )}
                 <p className="mt-4 text-xs text-muted-foreground text-center">This QR code directs students to the attendance page.</p>
               </CardContent>
             </Card>
