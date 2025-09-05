@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
-import { AttendanceButton } from '@/components/AttendanceButton';
+import { ClassAttendanceScanner } from '@/components/ClassAttendanceScanner';
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, User, ChevronLeft } from 'lucide-react';
@@ -50,7 +50,7 @@ export default function StudentClassPage() {
                             <Skeleton className="h-5 w-1/2 mx-auto" />
                             <Skeleton className="h-5 w-2/3 mx-auto" />
                         </div>
-                         <Skeleton className="h-12 w-full max-w-xs" />
+                         <Skeleton className="h-48 w-full max-w-md" />
                     </CardContent>
                 </Card>
             </div>
@@ -80,7 +80,7 @@ export default function StudentClassPage() {
                 <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {classItem.teacherName}</p>
                 <p className="flex items-center justify-center gap-2"><Clock className="h-4 w-4" /> {classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</p>
               </div>
-              <AttendanceButton classId={classItem.id} classTimeSlot={classItem.timeSlot} />
+              <ClassAttendanceScanner classItem={classItem} />
             </CardContent>
           </Card>
         </div>

@@ -12,7 +12,7 @@ import { getStudentClasses } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, QrCode, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import type { StudentProfile, Class } from '@/lib/data';
 
 export default function StudentDashboard() {
@@ -90,7 +90,6 @@ export default function StudentDashboard() {
               <Skeleton className="h-8 w-48" />
               <Skeleton className="h-5 w-64" />
             </div>
-            <Skeleton className="h-10 w-36" />
           </div>
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[...Array(4)].map((_, i) => (
@@ -121,9 +120,6 @@ export default function StudentDashboard() {
             <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
             <p className="text-muted-foreground">Here are the classes for your semester.</p>
           </div>
-           <Button asChild>
-                <Link href="/student/scan"><QrCode className="mr-2 h-4 w-4" /> Scan QR Code</Link>
-            </Button>
         </div>
          {classes.length > 0 ? (
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
