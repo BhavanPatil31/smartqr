@@ -30,8 +30,8 @@ export default function Home() {
           </CardContent>
           <div className="p-6 pt-0">
             <Button asChild className="w-full">
-              <Link href="/student/dashboard">
-                Enter as Student <ArrowRight className="ml-2 h-4 w-4" />
+              <Link href="/student/login">
+                Student Login <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -51,8 +51,8 @@ export default function Home() {
           </CardContent>
           <div className="p-6 pt-0">
             <Button asChild className="w-full">
-              <Link href="/teacher/dashboard">
-                Enter as Teacher <ArrowRight className="ml-2 h-4 w-4" />
+              <Link href="/teacher/login">
+                Teacher Login <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>

@@ -1,30 +1,13 @@
+
 'use client';
 
 import { useState } from 'react';
-import { detectSuspiciousAttendance, type DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
+import type { DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Lightbulb, ShieldAlert, Sparkles } from 'lucide-react';
 import type { AttendanceRecord, Class } from '@/lib/data';
-
-// Server action
-async function checkSuspiciousActivityAction(classId: string, attendanceRecords: AttendanceRecord[]): Promise<DetectSuspiciousAttendanceOutput> {
-    'use server';
-    
-    const formattedRecords = attendanceRecords.map(record => ({
-        studentId: record.studentId,
-        timestamp: record.timestamp,
-        deviceInfo: record.deviceInfo,
-    }));
-
-    const output = await detectSuspiciousAttendance({
-        classId: classId,
-        date: new Date().toISOString().split('T')[0],
-        attendanceRecords: formattedRecords,
-    });
-    
-    return output;
-}
+import { checkSuspiciousActivityAction } from '@/lib/actions';
 
 interface SuspiciousActivityCheckerProps {
     classItem: Class;
