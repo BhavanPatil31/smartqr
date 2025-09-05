@@ -8,10 +8,26 @@ export interface Student {
     department: string;
 }
 
+export interface StudentProfile {
+    fullName: string;
+    usn: string;
+    email: string;
+    phoneNumber: string;
+    semester: string;
+    department: string;
+}
+
 export interface Teacher {
     id: string;
     name: string;
     email: string;
+    department: string;
+}
+
+export interface TeacherProfile {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
     department: string;
 }
 
