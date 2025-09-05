@@ -49,9 +49,8 @@ export function AuthForm({ userType }: AuthFormProps) {
         await createUserWithEmailAndPassword(auth, email, password);
         toast({
           title: 'Success',
-          description: 'Account created successfully! Redirecting to your dashboard...',
+          description: 'Account created! Redirecting to dashboard...',
         });
-        // Redirect is handled by auth state listener, but we can push to be faster
         router.push(`/${userType}/dashboard`);
       } catch (error: any) {
         toast({
@@ -63,7 +62,11 @@ export function AuthForm({ userType }: AuthFormProps) {
     } else { // Login
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // Let the auth state listener redirect
+        toast({
+          title: 'Login Successful!',
+          description: 'Redirecting to your dashboard...',
+        });
+        router.push(`/${userType}/dashboard`);
       } catch (error: any) {
         toast({
           title: 'Login Failed',
