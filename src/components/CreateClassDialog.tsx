@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db, auth } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import type { TeacherProfile } from '@/lib/data';
 
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
@@ -79,11 +80,19 @@ export function CreateClassDialog({ children, open, onOpenChange }: CreateClassD
 
     setIsSaving(true);
     try {
+      const teacherDocRef = doc(db, 'teachers', user.uid);
+      const teacherDocSnap = await getDoc(teacherDocRef);
+      if (!teacherDocSnap.exists()) {
+        throw new Error("Teacher profile not found.");
+      }
+      const teacherProfile = teacherDocSnap.data() as TeacherProfile;
+
       await addDoc(collection(db, 'classes'), {
         subject: values.subject,
         department: values.department,
         semester: values.semester,
         teacherId: user.uid,
+        teacherName: teacherProfile.fullName,
         timeSlot: {
           day: values.day,
           start: values.startTime,

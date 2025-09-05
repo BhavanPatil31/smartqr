@@ -46,6 +46,7 @@ export interface Class {
     semester: string;
     department: string;
     teacherId: string;
+    teacherName: string;
     timeSlot: TimeSlot;
 }
 

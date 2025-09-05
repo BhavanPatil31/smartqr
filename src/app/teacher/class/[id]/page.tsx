@@ -8,20 +8,19 @@ import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { SuspiciousActivityChecker } from '@/components/SuspiciousActivityChecker';
-import { getClassById, getTeacherById } from '@/lib/data';
+import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Class, TeacherProfile, AttendanceRecord } from '@/lib/data';
+import type { Class, AttendanceRecord } from '@/lib/data';
 
 export default function TeacherClassPage() {
   const params = useParams();
   const classId = params.id as string;
   
   const [classItem, setClassItem] = useState<Class | null>(null);
-  const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,11 +29,7 @@ export default function TeacherClassPage() {
     const fetchClassData = async () => {
       setLoading(true);
       const fetchedClass = await getClassById(classId);
-      if (fetchedClass) {
-        setClassItem(fetchedClass);
-        const fetchedTeacher = await getTeacherById(fetchedClass.teacherId);
-        setTeacher(fetchedTeacher);
-      }
+      setClassItem(fetchedClass);
       setLoading(false);
     };
 
@@ -80,7 +75,7 @@ export default function TeacherClassPage() {
             </Button>
             <h1 className="font-semibold font-headline text-lg md:text-2xl">{classItem.subject}</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-              <span>{teacher?.fullName}</span>
+              <span>{classItem.teacherName}</span>
                &middot; 
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</span>
             </p>
