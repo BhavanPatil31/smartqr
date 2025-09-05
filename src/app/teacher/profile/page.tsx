@@ -14,9 +14,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, Edit, Mail, Phone, User as UserIcon, Building } from 'lucide-react';
+import { ChevronLeft, Edit, Mail, Phone, User as UserIcon, Building, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import type { TeacherProfile } from '@/lib/data';
+import { Header } from '@/components/Header';
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 
@@ -94,7 +95,6 @@ export default function TeacherProfilePage() {
                 <Skeleton className="h-12 w-48" />
                 <Skeleton className="h-48 w-full rounded-lg" />
                 <Skeleton className="h-80 w-full rounded-lg" />
-                <Skeleton className="h-48 w-full rounded-lg" />
             </div>
         </div>
     );
@@ -102,101 +102,75 @@ export default function TeacherProfilePage() {
 
   return (
     <div className="min-h-screen bg-muted/40">
-      <header className="bg-background border-b">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-                <Button asChild variant="ghost" size="sm">
-                    <Link href="/teacher/dashboard"><ChevronLeft className="mr-2 h-4 w-4"/>Back</Link>
-                </Button>
-                <h1 className="text-xl font-bold">Profile</h1>
-                <Button variant={isEditMode ? "default" : "outline"} size="sm" onClick={() => {
-                    if (isEditMode) {
-                        handleSave();
-                    } else {
-                        setIsEditMode(true);
-                    }
-                }} disabled={isSaving}>
-                   <Edit className="mr-2 h-4 w-4"/> {isEditMode ? (isSaving ? 'Saving...' : 'Save') : 'Edit'}
-                </Button>
-            </div>
+       <Header>
+        <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+                <Link href="/teacher/dashboard"><ChevronLeft className="mr-2 h-4 w-4"/>Back to Dashboard</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4"/> Logout
+            </Button>
         </div>
-      </header>
+      </Header>
       
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl space-y-6">
+         <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Your Profile</h1>
+             <Button variant={isEditMode ? "default" : "outline"} onClick={() => {
+                if (isEditMode) {
+                    handleSave();
+                } else {
+                    setIsEditMode(true);
+                }
+            }} disabled={isSaving}>
+                <Edit className="mr-2 h-4 w-4"/> {isEditMode ? (isSaving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+            </Button>
+        </div>
+
         <Card>
-          <CardContent className="pt-6 flex flex-col items-center space-y-2">
+          <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
               <AvatarFallback className="text-3xl">
                 {profile.fullName?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <p className="font-bold text-2xl">{profile.fullName}</p>
-            <p className="text-muted-foreground">{profile.department}</p>
+            <div className="text-center md:text-left">
+              <p className="font-bold text-2xl">{profile.fullName}</p>
+              <p className="text-muted-foreground">{profile.department || 'No department selected'}</p>
+               <p className="text-sm text-muted-foreground">{profile.email}</p>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <div className='flex items-center gap-2'>
-              <UserIcon className="h-6 w-6" />
-              <div>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>View and edit your profile information.</CardDescription>
-              </div>
-            </div>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>View and edit your profile information.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="fullName" value={profile.fullName} onChange={handleInputChange} disabled={!isEditMode} className="pl-8" />
-                </div>
+                <Input id="fullName" value={profile.fullName} onChange={handleInputChange} disabled={!isEditMode} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="email" type="email" value={profile.email} disabled />
-                 </div>
+               <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input id="email" type="email" value={profile.email} disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="phoneNumber" type="tel" value={profile.phoneNumber} onChange={handleInputChange} disabled={!isEditMode} className="pl-8" />
-                </div>
+                <Input id="phoneNumber" type="tel" value={profile.phoneNumber} onChange={handleInputChange} disabled={!isEditMode} />
               </div>
                <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
-                 <div className="relative">
-                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Select name="department" value={profile.department} onValueChange={(value) => handleSelectChange('department', value)} disabled={!isEditMode}>
-                      <SelectTrigger className="pl-8"><SelectValue placeholder="Select Department" /></SelectTrigger>
-                      <SelectContent>
-                        {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                 </div>
+                <Select name="department" value={profile.department} onValueChange={(value) => handleSelectChange('department', value)} disabled={!isEditMode}>
+                  <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="link" className="p-0 text-foreground">Change Password</Button>
-            <div className="flex justify-between items-center">
-                <p>Email Verification Status</p>
-                <span className={`text-sm ${user?.emailVerified ? 'text-green-600' : 'text-orange-500'}`}>
-                    {user?.emailVerified ? 'Verified' : 'Not Verified'}
-                </span>
-            </div>
-            <Button variant="link" className="p-0 text-destructive" onClick={handleLogout}>Sign Out</Button>
           </CardContent>
         </Card>
       </main>

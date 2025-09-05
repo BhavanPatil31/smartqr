@@ -49,8 +49,9 @@ export function AuthForm({ userType }: AuthFormProps) {
         await createUserWithEmailAndPassword(auth, email, password);
         toast({
           title: 'Success',
-          description: 'Account created successfully! Please log in.',
+          description: 'Account created successfully! Redirecting to your dashboard...',
         });
+        // Redirect is handled by auth state listener, but we can push to be faster
         router.push(`/${userType}/dashboard`);
       } catch (error: any) {
         toast({
@@ -62,7 +63,7 @@ export function AuthForm({ userType }: AuthFormProps) {
     } else { // Login
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        router.push(`/${userType}/dashboard`);
+        // Let the auth state listener redirect
       } catch (error: any) {
         toast({
           title: 'Login Failed',
@@ -74,30 +75,44 @@ export function AuthForm({ userType }: AuthFormProps) {
     
     setIsLoading(false);
   };
+  
+  const FormSkeleton = () => (
+     <Card className="w-full max-w-sm">
+        <CardHeader>
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-full mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+             <div className="space-y-2">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-10 w-full" />
+        </CardContent>
+     </Card>
+  );
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
-      <div className="absolute top-4 left-4">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted/40">
+      <div className="absolute top-6 left-6">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <QrCode className="h-6 w-6 text-primary" />
-          <span className="font-bold font-headline">QAttend</span>
+          <span className="font-bold text-xl">QAttend</span>
         </Link>
       </div>
-      <Card className="w-full max-w-sm">
-        {!isClient ? (
-          <div className="space-y-4 p-6">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
+      
+      {!isClient ? <FormSkeleton /> : (
+        <Tabs defaultValue="login" className="w-full max-w-sm">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
+          </TabsList>
+          <TabsContent value="login">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Login</CardTitle>
                 <CardDescription>Enter your email and password to access your dashboard.</CardDescription>
@@ -113,12 +128,14 @@ export function AuthForm({ userType }: AuthFormProps) {
                     <Input id="password-login" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Logging in...' : 'Login'}
+                    {isLoading ? 'Signing In...' : 'Sign In'}
                   </Button>
                 </form>
               </CardContent>
-            </TabsContent>
-            <TabsContent value="register">
+            </Card>
+          </TabsContent>
+          <TabsContent value="register">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Registration</CardTitle>
                 <CardDescription>Create an account to get started.</CardDescription>
@@ -142,10 +159,10 @@ export function AuthForm({ userType }: AuthFormProps) {
                   </Button>
                 </form>
               </CardContent>
-            </TabsContent>
-          </Tabs>
-        )}
-      </Card>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </main>
   );
 }
