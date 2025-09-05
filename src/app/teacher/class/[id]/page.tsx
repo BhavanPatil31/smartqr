@@ -1,27 +1,73 @@
+
+"use client";
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { SuspiciousActivityChecker } from '@/components/SuspiciousActivityChecker';
-import { getAttendanceForClassOnDate, getClassById, getTeacherById } from '@/lib/data';
-import { notFound } from 'next/navigation';
+import { getClassById, getTeacherById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft } from 'lucide-react';
+import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Class, TeacherProfile, AttendanceRecord } from '@/lib/data';
 
-export default function TeacherClassPage({ params }: { params: { id: string } }) {
-  const classItem = getClassById(params.id);
+export default function TeacherClassPage() {
+  const params = useParams();
+  const classId = params.id as string;
+  
+  const [classItem, setClassItem] = useState<Class | null>(null);
+  const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!classId) return;
+
+    const fetchClassData = async () => {
+      setLoading(true);
+      const fetchedClass = await getClassById(classId);
+      if (fetchedClass) {
+        setClassItem(fetchedClass);
+        const fetchedTeacher = await getTeacherById(fetchedClass.teacherId);
+        setTeacher(fetchedTeacher);
+      }
+      setLoading(false);
+    };
+
+    fetchClassData();
+  }, [classId]);
+
+  if (loading) {
+    return (
+       <div className="flex min-h-screen w-full flex-col">
+          <Header />
+          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+             <Skeleton className="h-10 w-48" />
+             <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                    <Skeleton className="h-96 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
+                <div className="lg:col-span-1">
+                    <Skeleton className="h-80 w-full" />
+                </div>
+             </div>
+          </main>
+       </div>
+    );
+  }
 
   if (!classItem) {
     notFound();
   }
   
   const today = format(new Date(), 'yyyy-MM-dd');
-  const attendanceRecords = getAttendanceForClassOnDate(classItem.id, today);
-
-  const teacher = getTeacherById(classItem.teacherId);
-  const qrCodeUrl = `http://localhost:9002/student/class/${classItem.id}`;
+  const attendanceRecords: AttendanceRecord[] = []; // This will be updated to fetch from Firestore
+  const qrCodeUrl = `${window.location.origin}/student/class/${classItem.id}`;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -33,7 +79,11 @@ export default function TeacherClassPage({ params }: { params: { id: string } })
                 <Link href="/teacher/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
             </Button>
             <h1 className="font-semibold font-headline text-lg md:text-2xl">{classItem.subject}</h1>
-            <p className="text-sm text-muted-foreground">{teacher?.name} &middot; {classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+              <span>{teacher?.fullName}</span>
+               &middot; 
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</span>
+            </p>
           </div>
         </div>
 

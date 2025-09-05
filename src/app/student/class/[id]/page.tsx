@@ -1,21 +1,61 @@
+
+"use client";
+
+import { useEffect, useState } from 'react';
+import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceButton } from '@/components/AttendanceButton';
 import { getClassById, getTeacherById } from '@/lib/data';
-import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, User } from 'lucide-react';
+import { Clock, User, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Class, TeacherProfile } from '@/lib/data';
 
-export default function StudentClassPage({ params }: { params: { id: string } }) {
-  const classItem = getClassById(params.id);
+
+export default function StudentClassPage() {
+  const params = useParams();
+  const classId = params.id as string;
+
+  const [classItem, setClassItem] = useState<Class | null>(null);
+  const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+   useEffect(() => {
+    if (!classId) return;
+
+    const fetchClassData = async () => {
+      setLoading(true);
+      const fetchedClass = await getClassById(classId);
+      if (fetchedClass) {
+        setClassItem(fetchedClass);
+        const fetchedTeacher = await getTeacherById(fetchedClass.teacherId);
+        setTeacher(fetchedTeacher);
+      }
+      setLoading(false);
+    };
+
+    fetchClassData();
+  }, [classId]);
+
+   if (loading) {
+    return (
+       <div className="flex min-h-screen w-full flex-col">
+        <Header />
+        <main className="flex flex-1 flex-col items-center justify-center p-4">
+            <div className="w-full max-w-2xl space-y-4">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        </main>
+      </div>
+    );
+  }
 
   if (!classItem) {
     notFound();
   }
-
-  const teacher = getTeacherById(classItem.teacherId);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -31,10 +71,10 @@ export default function StudentClassPage({ params }: { params: { id: string } })
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-6">
               <div className="text-muted-foreground space-y-2 text-center">
-                <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {teacher?.name}</p>
+                <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {teacher?.fullName}</p>
                 <p className="flex items-center justify-center gap-2"><Clock className="h-4 w-4" /> {classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</p>
               </div>
-              <AttendanceButton classTimeSlot={classItem.timeSlot} />
+              <AttendanceButton classId={classItem.id} classTimeSlot={classItem.timeSlot} />
             </CardContent>
           </Card>
         </div>

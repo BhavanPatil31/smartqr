@@ -1,5 +1,8 @@
-import { addMinutes, set } from 'date-fns';
 
+import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
+import { db } from './firebase';
+
+// Interface definitions remain the same
 export interface Student {
     id: string;
     name: string;
@@ -40,7 +43,7 @@ export interface TimeSlot {
 export interface Class {
     id: string;
     subject: string;
-    semester: number;
+    semester: string;
     department: string;
     teacherId: string;
     timeSlot: TimeSlot;
@@ -48,82 +51,50 @@ export interface Class {
 
 export interface AttendanceRecord {
     studentId: string;
-    name: string;
+    studentName: string;
     usn: string;
     timestamp: number;
     deviceInfo: string;
 }
 
-// MOCK DATA
+// DATA ACCESS FUNCTIONS using Firestore
 
-const students: Student[] = [
-    { id: 'S1', name: 'Alice Johnson', usn: '1AB21CS001', semester: 5, department: 'Computer Science' },
-    { id: 'S2', name: 'Bob Williams', usn: '1AB21CS002', semester: 5, department: 'Computer Science' },
-    { id: 'S3', name: 'Charlie Brown', usn: '1AB21CS003', semester: 5, department: 'Computer Science' },
-    { id: 'S4', name: 'Diana Miller', usn: '1AB21EC001', semester: 5, department: 'Electronics' },
-];
-
-const teachers: Teacher[] = [
-    { id: 'T1', name: 'Dr. Evelyn Reed', email: 'e.reed@example.com', department: 'Computer Science' },
-    { id: 'T2', name: 'Prof. Alan Grant', email: 'a.grant@example.com', department: 'Electronics' },
-];
-
-const now = new Date();
-const classStartTime = set(now, { minutes: now.getMinutes() - 30 });
-const classEndTime = addMinutes(classStartTime, 90);
-
-const classes: Class[] = [
-    { 
-        id: 'C1', 
-        subject: 'Database Systems', 
-        semester: 5, 
-        department: 'Computer Science', 
-        teacherId: 'T1', 
-        timeSlot: { 
-            day: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()], 
-            start: `${classStartTime.getHours().toString().padStart(2, '0')}:${classStartTime.getMinutes().toString().padStart(2, '0')}`,
-            end: `${classEndTime.getHours().toString().padStart(2, '0')}:${classEndTime.getMinutes().toString().padStart(2, '0')}`
-        } 
-    },
-    { id: 'C2', subject: 'Digital Circuits', semester: 5, department: 'Electronics', teacherId: 'T2', timeSlot: { day: 'Wednesday', start: '11:00', end: '12:30' } },
-    { id: 'C3', subject: 'Operating Systems', semester: 5, department: 'Computer Science', teacherId: 'T1', timeSlot: { day: 'Friday', start: '09:00', end: '10:30' } },
-];
-
-// Mocking some attendance data for today
-const todayStr = now.toISOString().split('T')[0]; // "yyyy-MM-dd"
-const classTime = addMinutes(classStartTime, 15).getTime();
-const attendance: Record<string, Record<string, AttendanceRecord[]>> = {
-    'C1': {
-        [todayStr]: [
-            { studentId: 'S1', name: 'Alice Johnson', usn: '1AB21CS001', timestamp: classTime, deviceInfo: 'device_A' },
-            { studentId: 'S2', name: 'Bob Williams', usn: '1AB21CS002', timestamp: addMinutes(classTime, 1).getTime(), deviceInfo: 'device_B' },
-            // Suspicious entries
-            { studentId: 'S3', name: 'Charlie Brown', usn: '1AB21CS003', timestamp: addMinutes(classTime, 2).getTime(), deviceInfo: 'device_C_suspicious' },
-            { studentId: 'S4', name: 'David Smith (Proxy)', usn: '1AB21CS004', timestamp: addMinutes(classTime, 2).getTime(), deviceInfo: 'device_C_suspicious' },
-            { studentId: 'S5', name: 'Eve Davis (Proxy)', usn: '1AB21CS005', timestamp: addMinutes(classTime, 2).getTime(), deviceInfo: 'device_C_suspicious' },
-             { studentId: 'S6', name: 'Frank White (Proxy)', usn: '1AB21CS006', timestamp: addMinutes(classTime, 2).getTime(), deviceInfo: 'device_C_suspicious' },
-        ],
-    },
+export const getStudentClasses = async (department: string, semester: string) => {
+    if (!department || !semester) return [];
+    const q = query(
+        collection(db, 'classes'),
+        where('department', '==', department),
+        where('semester', '==', semester)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 };
 
-// DATA ACCESS FUNCTIONS
-
-export const getStudentClasses = () => {
-    return classes.filter(c => c.department === 'Computer Science' || c.department === 'Electronics');
+export const getTeacherClasses = async (teacherId: string) => {
+    const q = query(collection(db, 'classes'), where('teacherId', '==', teacherId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 };
 
-export const getTeacherClasses = (teacherId: string) => {
-    return classes.filter(c => c.teacherId === teacherId);
+export const getClassById = async (classId: string): Promise<Class | null> => {
+    const docRef = doc(db, 'classes', classId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Class;
+    }
+    return null;
 };
 
-export const getClassById = (classId: string) => {
-    return classes.find(c => c.id === classId);
-};
-
-export const getTeacherById = (teacherId: string) => {
-    return teachers.find(t => t.id === teacherId);
+export const getTeacherById = async (teacherId: string): Promise<TeacherProfile | null> => {
+     const docRef = doc(db, 'teachers', teacherId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as TeacherProfile;
+    }
+    return null;
 };
 
 export const getAttendanceForClassOnDate = (classId: string, date: string): AttendanceRecord[] => {
-    return attendance[classId]?.[date] || [];
+    // This will be replaced with a firestore query in the next step.
+    return [];
 };

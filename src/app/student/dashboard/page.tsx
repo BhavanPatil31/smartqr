@@ -1,9 +1,11 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Header } from '@/components/Header';
 import { ClassCard } from '@/components/ClassCard';
 import { getStudentClasses } from '@/lib/data';
@@ -11,22 +13,38 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { User } from 'lucide-react';
+import type { StudentProfile, Class } from '@/lib/data';
+
 
 export default function StudentDashboard() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/student/login');
     }
-    if (user) {
-      // In a real app, you would fetch classes for the logged-in user
-      // For now, we'll continue using the mock data
-      setClasses(getStudentClasses());
-    }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const fetchProfileAndClasses = async () => {
+      if (user) {
+        const docRef = doc(db, 'students', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const studentProfile = docSnap.data() as StudentProfile;
+          setProfile(studentProfile);
+          const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
+          setClasses(studentClasses);
+        }
+        setIsLoadingClasses(false);
+      }
+    };
+    fetchProfileAndClasses();
+  }, [user]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -67,7 +85,13 @@ export default function StudentDashboard() {
         <div className="flex items-center">
           <h1 className="font-semibold font-headline text-lg md:text-2xl">Your Classes</h1>
         </div>
-        {classes.length > 0 ? (
+         {isLoadingClasses ? (
+           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        ) : classes.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {classes.map((classItem) => (
               <ClassCard key={classItem.id} classItem={classItem} userRole="student" />
@@ -80,7 +104,7 @@ export default function StudentDashboard() {
                 No classes found
               </h3>
               <p className="text-sm text-muted-foreground">
-                There are currently no classes available for you.
+                No classes match your department and semester.
               </p>
             </div>
           </div>
