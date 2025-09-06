@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -35,52 +35,50 @@ export default function AdminDashboard() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    const fetchProfileAndData = async () => {
-      if (!user) {
-         setIsLoadingData(false);
-         return;
-      };
+    if (!user) {
+        setIsLoadingData(false);
+        return;
+    }
 
-      setIsLoadingData(true);
-      try {
-        const docRef = doc(db, 'admins', user.uid);
-        const docSnap = await getDoc(docRef);
-        
+    setIsLoadingData(true);
+    const docRef = doc(db, 'admins', user.uid);
+    
+    // Use onSnapshot for real-time profile updates
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
         if (docSnap.exists()) {
-          const adminProfile = docSnap.data() as AdminProfile;
-          setProfile(adminProfile);
-          
-          if (adminProfile.department) {
-            const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
-                getClassesByDepartment(adminProfile.department),
-                getTeachersByDepartment(adminProfile.department),
-                getStudentsByDepartment(adminProfile.department)
-            ]);
-            setClasses(deptClasses);
-            setTeachers(deptTeachers);
-            setStudents(deptStudents);
-          } else {
-            setClasses([]);
-            setTeachers([]);
-            setStudents([]);
-          }
+            const adminProfile = docSnap.data() as AdminProfile;
+            setProfile(adminProfile);
+            
+            if (adminProfile.department) {
+                // Fetch department data whenever the profile changes
+                const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
+                    getClassesByDepartment(adminProfile.department),
+                    getTeachersByDepartment(adminProfile.department),
+                    getStudentsByDepartment(adminProfile.department)
+                ]);
+                setClasses(deptClasses);
+                setTeachers(deptTeachers);
+                setStudents(deptStudents);
+            } else {
+                setClasses([]);
+                setTeachers([]);
+                setStudents([]);
+            }
         } else {
             setProfile(null);
             setClasses([]);
             setTeachers([]);
             setStudents([]);
         }
-      } catch (error) {
-          console.error("Failed to fetch admin data:", error);
-      } finally {
         setIsLoadingData(false);
-      }
-    };
+    }, (error) => {
+        console.error("Failed to fetch admin data:", error);
+        setIsLoadingData(false);
+    });
 
-    if (!loading && user) {
-        fetchProfileAndData();
-    }
-  }, [user, loading]);
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [user]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -130,7 +128,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Admin'}</h1>
-            <p className="text-muted-foreground">{profile?.department} Department Overview</p>
+            <p className="text-muted-foreground">{profile?.department ? `${profile.department} Department Overview` : 'Please select a department in your profile'}</p>
           </div>
         </div>
         
@@ -234,5 +232,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    
