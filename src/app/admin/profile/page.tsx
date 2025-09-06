@@ -55,7 +55,10 @@ export default function AdminProfilePage() {
         }
       }
     };
-    fetchProfile();
+
+    if (user) {
+        fetchProfile();
+    }
   }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
