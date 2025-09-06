@@ -16,7 +16,7 @@ export function ClassCard({ classItem, userRole }: ClassCardProps) {
   
   return (
     <Link href={href} className="group">
-      <Card className="hover:shadow-lg transition-shadow duration-300 h-full flex flex-col bg-card/50 backdrop-blur-sm hover:border-primary">
+      <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-border/50 transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary/50 hover:-translate-y-2 hover:bg-card/80">
         <CardHeader>
           <CardTitle className="text-lg group-hover:text-primary transition-colors">{classItem.subject}</CardTitle>
           <CardDescription>{classItem.department} - {classItem.semester}</CardDescription>
