@@ -22,42 +22,53 @@ import { Header } from '@/components/Header';
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 
 export default function TeacherProfilePage() {
-  const [user, loading] = useAuthState(auth);
+  const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/teacher/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
   
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        const docRef = doc(db, 'teachers', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as TeacherProfile);
-        } else {
-          // Create a default profile if one doesn't exist
-          const defaultProfile: TeacherProfile = {
-            fullName: user.displayName || 'New Teacher',
-            email: user.email || '',
-            phoneNumber: '',
-            department: '',
-          };
-          setProfile(defaultProfile);
-          setIsEditMode(true); // Force edit mode for new profiles
+        setLoading(true);
+        try {
+            const docRef = doc(db, 'teachers', user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as TeacherProfile);
+            } else {
+              // Create a default profile if one doesn't exist
+              const defaultProfile: TeacherProfile = {
+                fullName: user.displayName || 'New Teacher',
+                email: user.email || '',
+                phoneNumber: '',
+                department: '',
+              };
+              setProfile(defaultProfile);
+              setIsEditMode(true); // Force edit mode for new profiles
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            toast({ title: 'Error', description: 'Could not fetch profile.', variant: 'destructive'});
+        } finally {
+            setLoading(false);
         }
       }
     };
-    fetchProfile();
-  }, [user]);
+    if (user) {
+        fetchProfile();
+    }
+  }, [user, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -88,7 +99,7 @@ export default function TeacherProfilePage() {
     router.push('/');
   };
   
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
         <div className="min-h-screen gradient-bg-dark">
             <Header>

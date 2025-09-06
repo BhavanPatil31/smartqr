@@ -24,44 +24,55 @@ const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester
 
 
 export default function StudentProfilePage() {
-  const [user, loading] = useAuthState(auth);
+  const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/student/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
   
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        const docRef = doc(db, 'students', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as StudentProfile);
-        } else {
-          // Create a default profile if one doesn't exist
-          const defaultProfile: StudentProfile = {
-            fullName: user.displayName || 'New User',
-            usn: '',
-            email: user.email || '',
-            phoneNumber: '',
-            semester: '',
-            department: '',
-          };
-          setProfile(defaultProfile);
-          setIsEditMode(true); // Force edit mode for new profiles
+        setLoading(true);
+        try {
+            const docRef = doc(db, 'students', user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as StudentProfile);
+            } else {
+              // Create a default profile if one doesn't exist
+              const defaultProfile: StudentProfile = {
+                fullName: user.displayName || 'New User',
+                usn: '',
+                email: user.email || '',
+                phoneNumber: '',
+                semester: '',
+                department: '',
+              };
+              setProfile(defaultProfile);
+              setIsEditMode(true); // Force edit mode for new profiles
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            toast({ title: 'Error', description: 'Could not fetch profile.', variant: 'destructive'});
+        } finally {
+            setLoading(false);
         }
       }
     };
-    fetchProfile();
-  }, [user]);
+    if(user) {
+        fetchProfile();
+    }
+  }, [user, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -92,7 +103,7 @@ export default function StudentProfilePage() {
     router.push('/');
   };
   
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <div className="min-h-screen gradient-bg-dark">
         <Header>

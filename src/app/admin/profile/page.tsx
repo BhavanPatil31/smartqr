@@ -27,7 +27,7 @@ export default function AdminProfilePage() {
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<AdminProfile | null>(null);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -40,29 +40,35 @@ export default function AdminProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        setIsDataLoading(true);
-        const docRef = doc(db, 'admins', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as AdminProfile);
-        } else {
-          // Create a default profile if one doesn't exist
-          const defaultProfile: AdminProfile = {
-            fullName: user.displayName || 'New Admin',
-            email: user.email || '',
-            department: '',
-          };
-          setProfile(defaultProfile);
-          setIsEditMode(true); // Force edit mode for new profiles
+        setLoading(true);
+        try {
+            const docRef = doc(db, 'admins', user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as AdminProfile);
+            } else {
+              // Create a default profile if one doesn't exist
+              const defaultProfile: AdminProfile = {
+                fullName: user.displayName || 'New Admin',
+                email: user.email || '',
+                department: '',
+              };
+              setProfile(defaultProfile);
+              setIsEditMode(true); // Force edit mode for new profiles
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            toast({ title: 'Error', description: 'Could not fetch profile.', variant: 'destructive'});
+        } finally {
+            setLoading(false);
         }
-        setIsDataLoading(false);
       }
     };
 
     if (user) {
         fetchProfile();
     }
-  }, [user]);
+  }, [user, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -93,7 +99,7 @@ export default function AdminProfilePage() {
     router.push('/');
   };
   
-  if (authLoading || isDataLoading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
         <div className="min-h-screen gradient-bg-dark">
             <Header>
@@ -123,7 +129,7 @@ export default function AdminProfilePage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[...Array(3)].map((_, i) => (
+                            {[...Array(2)].map((_, i) => (
                                 <div key={i} className="space-y-2">
                                     <Skeleton className="h-4 w-24" />
                                     <Skeleton className="h-10 w-full" />
@@ -194,7 +200,7 @@ export default function AdminProfilePage() {
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" type="email" value={profile.email} disabled />
               </div>
-               <div className="space-y-2">
+               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="department">Department</Label>
                 <Select name="department" value={profile.department} onValueChange={(value) => handleSelectChange('department', value)} disabled={!isEditMode}>
                   <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
