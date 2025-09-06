@@ -112,9 +112,9 @@ export function AuthForm({ userType }: AuthFormProps) {
       
       {!isClient ? <FormSkeleton /> : (
         <Tabs defaultValue="login" className="w-full max-w-sm">
-          <TabsList className={`grid w-full ${userType === 'admin' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
-            {userType !== 'admin' && <TabsTrigger value="register">Register</TabsTrigger>}
+            <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
             <Card className="bg-card/80 backdrop-blur-sm">
@@ -139,7 +139,6 @@ export function AuthForm({ userType }: AuthFormProps) {
               </CardContent>
             </Card>
           </TabsContent>
-          {userType !== 'admin' && (
             <TabsContent value="register">
               <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
@@ -167,7 +166,6 @@ export function AuthForm({ userType }: AuthFormProps) {
                 </CardContent>
               </Card>
             </TabsContent>
-          )}
         </Tabs>
       )}
     </main>
