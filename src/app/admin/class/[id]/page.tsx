@@ -1,0 +1,137 @@
+
+"use client";
+
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { notFound, useParams } from 'next/navigation';
+import { Header } from '@/components/Header';
+import { AttendanceTable } from '@/components/AttendanceTable';
+import { getClassById } from '@/lib/data';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, ChevronLeft, Clock } from 'lucide-react';
+import { format } from 'date-fns-tz';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Class, AttendanceRecord } from '@/lib/data';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { LogOut } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+
+
+export default function AdminClassViewPage() {
+  const params = useParams();
+  const router = useRouter();
+  const classId = params.id as string;
+  
+  const [classItem, setClassItem] = useState<Class | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+
+  useEffect(() => {
+    if (!classId) return;
+
+    const fetchClassData = async () => {
+      setLoading(true);
+      const fetchedClass = await getClassById(classId);
+      setClassItem(fetchedClass);
+      setLoading(false);
+    };
+
+    fetchClassData();
+  }, [classId]);
+
+  useEffect(() => {
+    if (!classId) return;
+    
+    const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
+    const attendanceCollectionRef = collection(db, 'classes', classId, 'attendance', todayStr, 'records');
+    const q = query(attendanceCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+      setAttendanceRecords(records);
+    }, (error) => {
+      console.error("Error fetching attendance: ", error);
+      // Handle permission errors if necessary
+    });
+
+    return () => unsubscribe();
+  }, [classId]);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/');
+  };
+
+  if (loading) {
+    return (
+       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+          <Header />
+          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+             <div className="space-y-2">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-5 w-1/2" />
+             </div>
+             <Card>
+                <CardHeader>
+                     <Skeleton className="h-6 w-40 mb-2" />
+                     <Skeleton className="h-4 w-3/4" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-48 w-full" />
+                </CardContent>
+            </Card>
+          </main>
+       </div>
+    );
+  }
+
+  if (!classItem) {
+    notFound();
+  }
+  
+  const today = format(new Date(), 'yyyy-MM-dd');
+  
+  return (
+    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+      <Header>
+          <Button onClick={handleLogout} variant="outline" size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+          </Button>
+      </Header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-start justify-between">
+          <div>
+             <Button asChild variant="ghost" className="-ml-4 mb-2">
+                <Link href="/admin/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
+            </Button>
+            <h1 className="font-semibold font-headline text-lg md:text-2xl">{classItem.subject}</h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+              <span>{classItem.teacherName}</span>
+               &middot; 
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</span>
+            </p>
+          </div>
+        </div>
+
+        <Card className="bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary"/>
+              <CardTitle>Live Attendance ({today})</CardTitle>
+            </div>
+            <CardDescription>Read-only view of students who have marked attendance today.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AttendanceTable records={attendanceRecords} />
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

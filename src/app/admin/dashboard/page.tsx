@@ -65,12 +65,10 @@ export default function AdminDashboard() {
             setStudents([]);
           }
         } else {
-            // No profile, maybe redirect or show error. For now, show empty.
             setProfile(null);
             setClasses([]);
             setTeachers([]);
             setStudents([]);
-            // You might want to force the admin to a profile setup page if it doesn't exist
         }
       } catch (error) {
           console.error("Failed to fetch admin data:", error);
@@ -119,6 +117,9 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
       <Header>
          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+                <Link href="/admin/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+            </Button>
             <Button onClick={handleLogout} variant="outline" size="sm">
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -143,7 +144,7 @@ export default function AdminDashboard() {
                 <Card className="mt-4 bg-card/50 backdrop-blur-sm">
                     <CardHeader>
                         <CardTitle>Department Classes</CardTitle>
-                        <CardDescription>All classes scheduled for the {profile?.department} department.</CardDescription>
+                        <CardDescription>All classes scheduled for the {profile?.department} department. Click a class to view its attendance.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Table>
@@ -157,7 +158,7 @@ export default function AdminDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {classes.map(c => (
-                                    <TableRow key={c.id}>
+                                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/class/${c.id}`)}>
                                         <TableCell>{c.subject}</TableCell>
                                         <TableCell>{c.semester}</TableCell>
                                         <TableCell>{c.teacherName}</TableCell>
