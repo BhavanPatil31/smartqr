@@ -73,6 +73,7 @@ export default function AdminDashboard() {
         setIsLoadingData(false);
     }, (error) => {
         console.error("Failed to fetch admin data:", error);
+        setProfile(null);
         setIsLoadingData(false);
     });
 
