@@ -10,13 +10,17 @@ import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, LogOut, BookOpen, Users, GraduationCap } from 'lucide-react';
+import { User, LogOut, BookOpen, Users, GraduationCap, ChevronDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getClassesByDepartment, getTeachersByDepartment, getStudentsByDepartment } from '@/lib/data';
 
 import type { AdminProfile, Class, TeacherProfile, StudentProfile } from '@/lib/data';
+
+const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
+
 
 export default function AdminDashboard() {
   const [user, loading] = useAuthState(auth);
@@ -27,6 +31,8 @@ export default function AdminDashboard() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
+
+  const [semesterFilter, setSemesterFilter] = useState('All');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -80,6 +86,9 @@ export default function AdminDashboard() {
     // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user]);
+  
+  const filteredClasses = classes.filter(c => semesterFilter === 'All' || c.semester === semesterFilter);
+
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -150,13 +159,30 @@ export default function AdminDashboard() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Subject</TableHead>
-                                    <TableHead>Semester</TableHead>
+                                    <TableHead>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" className="p-0 hover:bg-transparent">
+                                            Semester
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                           <DropdownMenuRadioGroup value={semesterFilter} onValueChange={setSemesterFilter}>
+                                              <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
+                                              {SEMESTERS.map(s => (
+                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
+                                              ))}
+                                            </DropdownMenuRadioGroup>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableHead>
                                     <TableHead>Teacher</TableHead>
                                     <TableHead>Schedule</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {classes.map(c => (
+                                {filteredClasses.map(c => (
                                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/class/${c.id}`)}>
                                         <TableCell>{c.subject}</TableCell>
                                         <TableCell>{c.semester}</TableCell>
