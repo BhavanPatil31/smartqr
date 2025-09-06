@@ -32,7 +32,8 @@ export default function AdminDashboard() {
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
 
-  const [semesterFilter, setSemesterFilter] = useState('All');
+  const [classSemesterFilter, setClassSemesterFilter] = useState('All');
+  const [studentSemesterFilter, setStudentSemesterFilter] = useState('All');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -87,7 +88,8 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [user]);
   
-  const filteredClasses = classes.filter(c => semesterFilter === 'All' || c.semester === semesterFilter);
+  const filteredClasses = classes.filter(c => classSemesterFilter === 'All' || c.semester === classSemesterFilter);
+  const filteredStudents = students.filter(s => studentSemesterFilter === 'All' || s.semester === studentSemesterFilter);
 
 
   const handleLogout = async () => {
@@ -168,7 +170,7 @@ export default function AdminDashboard() {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
-                                           <DropdownMenuRadioGroup value={semesterFilter} onValueChange={setSemesterFilter}>
+                                           <DropdownMenuRadioGroup value={classSemesterFilter} onValueChange={setClassSemesterFilter}>
                                               <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
                                               {SEMESTERS.map(s => (
                                                 <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
@@ -235,12 +237,29 @@ export default function AdminDashboard() {
                                 <TableRow>
                                     <TableHead>Name</TableHead>
                                     <TableHead>USN</TableHead>
-                                    <TableHead>Semester</TableHead>
+                                    <TableHead>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" className="p-0 hover:bg-transparent">
+                                            Semester
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                           <DropdownMenuRadioGroup value={studentSemesterFilter} onValueChange={setStudentSemesterFilter}>
+                                              <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
+                                              {SEMESTERS.map(s => (
+                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
+                                              ))}
+                                            </DropdownMenuRadioGroup>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableHead>
                                     <TableHead>Email</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {students.map(s => (
+                                {filteredStudents.map(s => (
                                     <TableRow key={s.email}>
                                         <TableCell>{s.fullName}</TableCell>
                                         <TableCell>{s.usn}</TableCell>
