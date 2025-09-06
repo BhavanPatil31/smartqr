@@ -164,13 +164,13 @@ export default function TeacherClassPage() {
           </div>
           
           <div className="lg:col-span-1">
-            <Card className="gradient-card-2 text-primary-foreground">
+            <Card className="gradient-card-2 text-primary-foreground dark:text-primary-foreground">
               <CardHeader>
                 <div className="flex items-center gap-2">
                     <QrCodeIcon className="h-5 w-5"/>
                     <CardTitle>Class QR Code</CardTitle>
                 </div>
-                <CardDescription className="text-primary-foreground/80">Students can scan this to mark attendance.</CardDescription>
+                <CardDescription className="text-primary-foreground/80 dark:text-primary-foreground/80">Students can scan this to mark attendance.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center">
                  {qrCodeUrl ? (
@@ -186,7 +186,7 @@ export default function TeacherClassPage() {
                  ) : (
                     <Skeleton className="h-[216px] w-[216px]" />
                  )}
-                <p className="mt-4 text-xs text-primary-foreground/70 text-center">This QR code directs students to the attendance page.</p>
+                <p className="mt-4 text-xs text-primary-foreground/70 dark:text-primary-foreground/70 text-center">This QR code directs students to the attendance page.</p>
               </CardContent>
             </Card>
           </div>

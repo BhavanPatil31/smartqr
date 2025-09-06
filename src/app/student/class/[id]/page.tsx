@@ -75,7 +75,7 @@ export default function StudentClassPage() {
             <CardHeader>
               <CardTitle className="text-2xl text-center font-headline">{classItem.subject}</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center space-y-6">
+            <CardContent className="flex flex-col items-center space-y-6 pt-6">
               <div className="text-muted-foreground space-y-2 text-center">
                 <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {classItem.teacherName}</p>
                 <p className="flex items-center justify-center gap-2"><Clock className="h-4 w-4" /> {classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</p>

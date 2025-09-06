@@ -80,7 +80,7 @@ export function AuthForm({ userType }: AuthFormProps) {
   };
   
   const FormSkeleton = () => (
-     <Card className="w-full max-w-sm">
+     <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
         <CardHeader>
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-4 w-full mt-2" />
@@ -100,7 +100,7 @@ export function AuthForm({ userType }: AuthFormProps) {
   );
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted/40">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="absolute top-6 left-6">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <QrCode className="h-6 w-6 text-primary" />
@@ -115,7 +115,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
-            <Card>
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Login</CardTitle>
                 <CardDescription>Enter your email and password to access your dashboard.</CardDescription>
@@ -138,7 +138,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             </Card>
           </TabsContent>
           <TabsContent value="register">
-            <Card>
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-2xl">{userType === 'student' ? 'Student' : 'Teacher'} Registration</CardTitle>
                 <CardDescription>Create an account to get started.</CardDescription>

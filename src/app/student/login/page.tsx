@@ -1,5 +1,9 @@
 import { AuthForm } from '@/components/AuthForm';
 
 export default function StudentAuthPage() {
-  return <AuthForm userType="student" />;
+  return (
+    <div className="gradient-bg-dark">
+      <AuthForm userType="student" />
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
 import { QrCode } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Header({ children }: { children?: ReactNode }) {
   return (
@@ -10,8 +11,9 @@ export function Header({ children }: { children?: ReactNode }) {
           <QrCode className="h-6 w-6 text-primary" />
           <span className="font-bold text-xl">QAttend</span>
         </Link>
-        <div className="flex flex-1 items-center justify-end">
+        <div className="flex flex-1 items-center justify-end space-x-4">
           {children}
+          <ThemeToggle />
         </div>
       </div>
     </header>

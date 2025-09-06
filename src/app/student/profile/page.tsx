@@ -167,7 +167,7 @@ export default function StudentProfilePage() {
         <Card className="gradient-card-1">
           <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarFallback className="text-3xl">
+              <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
                 {profile.fullName?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>

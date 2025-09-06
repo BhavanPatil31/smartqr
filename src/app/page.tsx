@@ -42,7 +42,7 @@ export default function Home() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm font-semibold">Key Features</div>
+                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">How It Works</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   QAttend simplifies attendance for everyone involved.
@@ -92,7 +92,7 @@ export default function Home() {
               </p>
             </div>
              <div className="mt-12 grid max-w-4xl gap-8 md:grid-cols-2 mx-auto">
-                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-background/50">
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
                   <CardHeader>
                     <div className="flex items-center gap-4">
                       <div className="bg-primary rounded-md p-3 flex items-center justify-center">
@@ -112,7 +112,7 @@ export default function Home() {
                     </Button>
                   </CardFooter>
                 </Card>
-                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-background/50">
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
                   <CardHeader>
                      <div className="flex items-center gap-4">
                       <div className="bg-primary rounded-md p-3 flex items-center justify-center">
