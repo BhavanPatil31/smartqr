@@ -77,7 +77,7 @@ export default function StudentDashboard() {
 
   if (loading || isLoadingClasses) {
     return (
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
         <Header>
           <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-24" />
@@ -102,7 +102,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
       <Header>
          <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
@@ -128,7 +128,7 @@ export default function StudentDashboard() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12">
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-1 text-center p-8">
               <h3 className="text-2xl font-bold tracking-tight">
                 No classes found

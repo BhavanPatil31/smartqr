@@ -94,7 +94,7 @@ export default function StudentProfilePage() {
   
   if (loading || !profile) {
     return (
-      <div className="min-h-screen bg-muted/40">
+      <div className="min-h-screen gradient-bg-dark">
         <Header>
             <div className="flex items-center gap-2">
                 <Skeleton className="h-9 w-44" />
@@ -138,7 +138,7 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen gradient-bg-dark">
       <Header>
         <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
@@ -164,7 +164,7 @@ export default function StudentProfilePage() {
             </Button>
         </div>
 
-        <Card>
+        <Card className="gradient-card-1">
           <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
               <AvatarFallback className="text-3xl">
@@ -179,7 +179,7 @@ export default function StudentProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Academic Information</CardTitle>
             <CardDescription>View and edit your personal and academic details.</CardDescription>

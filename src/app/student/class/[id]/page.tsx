@@ -36,7 +36,7 @@ export default function StudentClassPage() {
 
    if (loading) {
     return (
-       <div className="flex min-h-screen w-full flex-col">
+       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
         <Header />
         <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="w-full max-w-2xl space-y-4">
@@ -64,14 +64,14 @@ export default function StudentClassPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
       <Header />
       <main className="flex flex-1 flex-col items-center justify-center p-4">
         <div className="w-full max-w-2xl">
           <Button asChild variant="ghost" className="mb-4">
               <Link href="/student/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
           </Button>
-          <Card className="w-full">
+          <Card className="w-full gradient-card-1">
             <CardHeader>
               <CardTitle className="text-2xl text-center font-headline">{classItem.subject}</CardTitle>
             </CardHeader>
