@@ -22,23 +22,25 @@ import { Header } from '@/components/Header';
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 
 export default function AdminProfilePage() {
-  const [user, loading] = useAuthState(auth);
+  const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/admin/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
   
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
+        setIsDataLoading(true);
         const docRef = doc(db, 'admins', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
@@ -53,6 +55,7 @@ export default function AdminProfilePage() {
           setProfile(defaultProfile);
           setIsEditMode(true); // Force edit mode for new profiles
         }
+        setIsDataLoading(false);
       }
     };
 
@@ -90,7 +93,7 @@ export default function AdminProfilePage() {
     router.push('/');
   };
   
-  if (loading || !profile) {
+  if (authLoading || isDataLoading || !profile) {
     return (
         <div className="min-h-screen gradient-bg-dark">
             <Header>
