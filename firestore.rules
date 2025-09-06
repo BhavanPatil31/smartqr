@@ -1,0 +1,50 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if a user is an admin for a specific department
+    function isAdminForDepartment(department) {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
+    }
+    
+    // Admins can read their own profile
+    match /admins/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      allow write: if request.auth != null && request.auth.uid == adminId;
+    }
+
+    // Students can read/write their own profile
+    match /students/{studentId} {
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
+    }
+
+    // Teachers can read/write their own profile
+    match /teachers/{teacherId} {
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+    }
+    
+    // Rules for classes collection
+    match /classes/{classId} {
+      // Allow read access for authenticated users
+      allow read: if request.auth != null;
+      
+      // Allow create/update only for the assigned teacher
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.teacherId;
+
+      // Rules for attendance subcollection
+      match /attendance/{date}/records/{recordId} {
+        // Students can only create their own attendance record
+        allow create: if request.auth != null && request.auth.uid == recordId;
+        
+        // Teachers of the class and Admins of the department can read attendance
+        allow read: if request.auth != null && (
+          (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+          isAdminForDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department)
+        );
+      }
+    }
+  }
+}
