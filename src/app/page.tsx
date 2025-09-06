@@ -1,5 +1,5 @@
 
-import { ArrowRight, BookUser, Cpu, QrCode, User } from 'lucide-react';
+import { ArrowRight, BookUser, Cpu, QrCode, User, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Header } from '@/components/Header';
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-background gradient-bg">
+    <div className="flex flex-col min-h-screen bg-background gradient-bg-dark">
       <Header />
       <main className="flex-1">
         <section className="w-full py-20 md:py-32 lg:py-40 xl:py-56">
@@ -49,7 +49,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-4xl gap-8 py-12 lg:grid-cols-3">
+            <div className="mx-auto grid max-w-5xl gap-8 py-12 lg:grid-cols-3">
                <div className="flex flex-col items-center text-center p-4">
                   <div className="bg-primary rounded-full p-4 mb-4">
                     <QrCode className="h-8 w-8 text-primary-foreground" />
@@ -91,7 +91,7 @@ export default function Home() {
                 Choose your role and get started in just a few clicks.
               </p>
             </div>
-             <div className="mt-12 grid max-w-4xl gap-8 md:grid-cols-2 mx-auto">
+             <div className="mt-12 grid max-w-6xl gap-8 md:grid-cols-3 mx-auto">
                 <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
                   <CardHeader>
                     <div className="flex items-center gap-4">
@@ -128,6 +128,26 @@ export default function Home() {
                     <Button asChild className="w-full">
                       <Link href="/teacher/login">
                         Teacher Login <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
+                  <CardHeader>
+                     <div className="flex items-center gap-4">
+                      <div className="bg-primary rounded-md p-3 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-primary-foreground" />
+                      </div>
+                      <CardTitle className="text-2xl">Admins</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <p className="text-muted-foreground">Oversee departmental data, including student, teacher, and class information for HODs.</p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button asChild className="w-full">
+                      <Link href="/admin/login">
+                        Admin Login <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
                   </CardFooter>

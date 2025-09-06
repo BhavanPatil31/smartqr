@@ -34,6 +34,12 @@ export interface TeacherProfile {
     department: string;
 }
 
+export interface AdminProfile {
+    fullName: string;
+    email: string;
+    department: string;
+}
+
 export interface TimeSlot {
     day: string;
     start: string; // "HH:mm"
@@ -99,3 +105,22 @@ export const getAttendanceForClassOnDate = (classId: string, date: string): Atte
     // This will be replaced with a firestore query in the next step.
     return [];
 };
+
+// Admin data functions
+export const getClassesByDepartment = async (department: string) => {
+    const q = query(collection(db, 'classes'), where('department', '==', department));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
+}
+
+export const getTeachersByDepartment = async (department: string) => {
+    const q = query(collection(db, 'teachers'), where('department', '==', department));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherProfile));
+}
+
+export const getStudentsByDepartment = async (department: string) => {
+    const q = query(collection(db, 'students'), where('department', '==', department));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
+}
