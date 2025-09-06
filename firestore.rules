@@ -4,46 +4,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an admin for a specific department
-    function isAdminForDepartment(department) {
-      return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
-    }
-    
-    // Admins can read their own profile
-    match /admins/{adminId} {
-      allow read: if request.auth != null && request.auth.uid == adminId;
-      allow write: if request.auth != null && request.auth.uid == adminId;
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Students can read/write their own profile
+    // Helper function to get a user's role and department from their profile
+    function getUserData(userType) {
+      return get(/databases/$(database)/documents/$(userType)/$(request.auth.uid)).data;
+    }
+
+    // Students can only read/write their own profile
     match /students/{studentId} {
-      allow read, write: if request.auth != null && request.auth.uid == studentId;
+      allow read, write: if isAuthenticated() && request.auth.uid == studentId;
+    }
+    // Admins can read student profiles within their department
+    match /students/{studentId} {
+        allow list, get: if isAuthenticated() && getUserData('admins').department == resource.data.department;
     }
 
-    // Teachers can read/write their own profile
+    // Teachers can only read/write their own profile
     match /teachers/{teacherId} {
-      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      allow read, write: if isAuthenticated() && request.auth.uid == teacherId;
     }
-    
+    // Admins can read teacher profiles within their department
+    match /teachers/{teacherId} {
+        allow list, get: if isAuthenticated() && getUserData('admins').department == resource.data.department;
+    }
+
+    // Admins can only read/write their own profile
+    match /admins/{adminId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == adminId;
+    }
+
     // Rules for classes collection
     match /classes/{classId} {
-      // Allow read access for authenticated users
-      allow read: if request.auth != null;
+      // Students can read class info for their department and semester
+      allow get: if isAuthenticated() && getUserData('students').department == resource.data.department && getUserData('students').semester == resource.data.semester;
       
-      // Allow create/update only for the assigned teacher
-      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.teacherId;
+      // Teachers can read/write classes they are assigned to
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.teacherId;
 
+      // Admins can read classes in their department
+      allow list, get: if isAuthenticated() && getUserData('admins').department == resource.data.department;
+
+      // Allow students to list classes for their dashboard view
+      allow list: if isAuthenticated() && request.query.where.department == getUserData('students').department && request.query.where.semester == getUserData('students').semester;
+      
       // Rules for attendance subcollection
       match /attendance/{date}/records/{recordId} {
-        // Students can only create their own attendance record
-        allow create: if request.auth != null && request.auth.uid == recordId;
+        // Students can create their own attendance record if they are in the class
+        allow create, read: if isAuthenticated() && request.auth.uid == recordId;
         
-        // Teachers of the class and Admins of the department can read attendance
-        allow read: if request.auth != null && (
-          (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-          isAdminForDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department)
-        );
+        // Teachers can read attendance for their classes
+        allow read: if isAuthenticated() && request.auth.uid == get(/databases/$(database)/documents/classes/$(classId)).data.teacherId;
+
+        // Admins can read attendance for classes in their department
+        allow read: if isAuthenticated() && getUserData('admins').department == get(/databases/$(database)/documents/classes/$(classId)).data.department;
       }
     }
   }
