@@ -40,12 +40,6 @@ export interface AdminProfile {
     department: string;
 }
 
-export interface TimeSlot {
-    day: string;
-    start: string; // "HH:mm"
-    end: string; // "HH:mm"
-}
-
 export interface Schedule {
     day: string;
     startTime: string;
@@ -61,7 +55,6 @@ export interface Class {
     teacherId: string;
     teacherName: string;
     schedules: Schedule[];
-    timeSlot: TimeSlot; // Kept for backward compatibility if needed, but new logic uses schedules
 }
 
 export interface AttendanceRecord {

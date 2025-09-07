@@ -8,7 +8,7 @@ import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, ChevronLeft, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { Users, ChevronLeft, Clock, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -135,11 +135,18 @@ export default function AdminClassViewPage() {
                 <Link href="/admin/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
             </Button>
             <h1 className="font-semibold font-headline text-lg md:text-2xl">{classItem.subject}</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-              <span>{classItem.teacherName}</span>
-               &middot; 
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</span>
+            <p className="text-sm text-muted-foreground mt-1">
+              {classItem.teacherName}
             </p>
+            <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2">
+              {classItem.schedules?.map((schedule, index) => (
+                  <div key={index} className="flex items-center gap-2 mt-1">
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.day}, {schedule.startTime} - {schedule.endTime}</span>
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{schedule.roomNumber}</span>
+                      {index < (classItem.schedules.length - 1) && <span className="hidden sm:inline">&middot;</span>}
+                  </div>
+              ))}
+            </div>
           </div>
         </div>
 
