@@ -55,6 +55,7 @@ export interface Class {
     teacherId: string;
     teacherName: string;
     schedules: Schedule[];
+    maxStudents?: number;
 }
 
 export interface AttendanceRecord {

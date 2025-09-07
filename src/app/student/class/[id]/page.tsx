@@ -7,7 +7,7 @@ import { Header } from '@/components/Header';
 import { ClassAttendanceScanner } from '@/components/ClassAttendanceScanner';
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, User, ChevronLeft } from 'lucide-react';
+import { Clock, User, ChevronLeft, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,7 +78,12 @@ export default function StudentClassPage() {
             <CardContent className="flex flex-col items-center space-y-6 pt-6">
               <div className="text-muted-foreground space-y-2 text-center">
                 <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {classItem.teacherName}</p>
-                <p className="flex items-center justify-center gap-2"><Clock className="h-4 w-4" /> {classItem.timeSlot.day}, {classItem.timeSlot.start} - {classItem.timeSlot.end}</p>
+                {classItem.schedules?.map((schedule, index) => (
+                  <div key={index} className="flex items-center justify-center gap-4">
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{schedule.day}, {schedule.startTime} - {schedule.endTime}</span>
+                      <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{schedule.roomNumber}</span>
+                  </div>
+                ))}
               </div>
               <ClassAttendanceScanner classItem={classItem} />
             </CardContent>

@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, CheckCircle, XCircle, ScanLine, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Class, TimeSlot } from '@/lib/data';
+import type { Class, Schedule } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
@@ -14,20 +14,22 @@ import { format, toDate } from 'date-fns-tz';
 import jsQR from 'jsqr';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Helper function to check if current time is within class time in IST
-const isClassTime = (timeSlot: TimeSlot) => {
+// Helper function to check if current time is within any of the class schedules in IST
+const isClassTime = (schedules: Schedule[]) => {
   const timeZone = 'Asia/Kolkata';
   const now = toDate(new Date());
   const dayOfWeek = format(now, 'EEEE', { timeZone });
 
-  if (dayOfWeek !== timeSlot.day) return false;
+  return schedules.some(schedule => {
+    if (dayOfWeek !== schedule.day) return false;
 
-  const startTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${timeSlot.start}:00`;
-  const endTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${timeSlot.end}:00`;
-  const startTime = toDate(startTimeStr, { timeZone });
-  const endTime = toDate(endTimeStr, { timeZone });
+    const startTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${schedule.startTime}:00`;
+    const endTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${schedule.endTime}:00`;
+    const startTime = toDate(startTimeStr, { timeZone });
+    const endTime = toDate(endTimeStr, { timeZone });
 
-  return now >= startTime && now <= endTime;
+    return now >= startTime && now <= endTime;
+  });
 };
 
 export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
@@ -44,7 +46,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   // 1. Check if class is in session and if attendance is already marked
   useEffect(() => {
     const checkTime = () => {
-      const isTime = isClassTime(classItem.timeSlot);
+      const isTime = isClassTime(classItem.schedules);
       setIsWithinClassTime(isTime);
       if (!isTime) setStatus('not_class_time');
     };
@@ -67,7 +69,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
     }
     
     return () => clearInterval(interval);
-  }, [classItem.timeSlot, classItem.id, user, isWithinClassTime]);
+  }, [classItem.schedules, classItem.id, user, isWithinClassTime]);
 
   // 2. Handle camera permission and scanning logic
   useEffect(() => {
