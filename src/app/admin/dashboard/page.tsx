@@ -50,14 +50,12 @@ export default function AdminDashboard() {
     setIsLoadingData(true);
     const docRef = doc(db, 'admins', user.uid);
     
-    // Use onSnapshot for real-time profile updates
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
         if (docSnap.exists()) {
             const adminProfile = docSnap.data() as AdminProfile;
             setProfile(adminProfile);
             
             if (adminProfile.department) {
-                // Fetch department data whenever the profile changes
                 const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
                     getClassesByDepartment(adminProfile.department),
                     getTeachersByDepartment(adminProfile.department),
@@ -84,7 +82,6 @@ export default function AdminDashboard() {
         setIsLoadingData(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user]);
   

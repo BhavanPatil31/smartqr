@@ -51,7 +51,7 @@ export default function TeacherDashboard() {
     router.push('/');
   };
 
-  if (loading || !user) {
+  if (loading || isLoadingClasses || !user) {
     return (
       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
         <Header>
@@ -96,11 +96,7 @@ export default function TeacherDashboard() {
                 </Button>
             </CreateClassDialog>
         </div>
-        {isLoadingClasses ? (
-           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-48 w-full" />)}
-          </div>
-        ) : classes.length > 0 ? (
+        {classes.length > 0 ? (
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {classes.map((classItem) => (
               <ClassCard key={classItem.id} classItem={classItem} userRole="teacher" />
