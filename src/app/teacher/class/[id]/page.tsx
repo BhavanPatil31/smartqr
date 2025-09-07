@@ -10,22 +10,35 @@ import { AttendanceTable } from '@/components/AttendanceTable';
 import { SuspiciousActivityChecker } from '@/components/SuspiciousActivityChecker';
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock } from 'lucide-react';
+import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock, Calendar as CalendarIcon, Download } from 'lucide-react';
 import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Class, AttendanceRecord } from '@/lib/data';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { getAttendanceForDate as getAttendanceForDateAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function TeacherClassPage() {
   const params = useParams();
   const classId = params.id as string;
+  const { toast } = useToast();
   
   const [classItem, setClassItem] = useState<Class | null>(null);
   const [loading, setLoading] = useState(true);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [liveAttendanceRecords, setLiveAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  
+  // State for historical attendance
+  const [historyDate, setHistoryDate] = useState<Date | undefined>(new Date());
+  const [historicalRecords, setHistoricalRecords] = useState<AttendanceRecord[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -46,6 +59,7 @@ export default function TeacherClassPage() {
     fetchClassData();
   }, [classId]);
 
+  // Listener for LIVE attendance
   useEffect(() => {
     if (!classId) return;
     
@@ -55,12 +69,60 @@ export default function TeacherClassPage() {
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
-      setAttendanceRecords(records);
+      setLiveAttendanceRecords(records);
     });
 
-    return () => unsubscribe(); // Cleanup listener on component unmount
+    return () => unsubscribe();
   }, [classId]);
+  
+  const handleFetchHistory = async () => {
+    if (!historyDate || !classId) return;
+    setIsHistoryLoading(true);
+    try {
+        const dateStr = format(historyDate, 'yyyy-MM-dd');
+        const records = await getAttendanceForDateAction(classId, dateStr);
+        setHistoricalRecords(records);
+    } catch (error) {
+        console.error("Failed to fetch history:", error);
+        toast({ title: "Error", description: "Could not fetch attendance history.", variant: "destructive" });
+    } finally {
+        setIsHistoryLoading(false);
+    }
+  }
 
+  const handleExport = (records: AttendanceRecord[], date: Date | undefined) => {
+    if (records.length === 0) {
+        toast({ title: 'No Data', description: 'There are no attendance records to export.' });
+        return;
+    }
+
+    const headers = ['Student Name', 'USN', 'Time Marked (IST)'];
+    // Sort records by timestamp before exporting
+    const sortedRecords = [...records].sort((a, b) => a.timestamp - b.timestamp);
+
+    const csvContent = [
+        headers.join(','),
+        ...sortedRecords.map(record => [
+            `"${record.studentName}"`,
+            `"${record.usn}"`,
+            `"${format(new Date(record.timestamp), 'HH:mm:ss', { timeZone: 'Asia/Kolkata' })}"`
+        ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.href) {
+      URL.revokeObjectURL(link.href);
+    }
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    const dateStr = date ? format(date, 'yyyy-MM-dd') : 'live';
+    link.setAttribute('download', `${classItem?.subject}_attendance_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
   if (loading) {
     return (
        <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
@@ -136,31 +198,91 @@ export default function TeacherClassPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary"/>
-                  <CardTitle>Live Attendance ({today})</CardTitle>
-                </div>
-                <CardDescription>Students who have marked attendance today.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AttendanceTable records={attendanceRecords} />
-              </CardContent>
-            </Card>
-
-             <Card className="bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-5 w-5 text-primary"/>
-                  <CardTitle>AI Attendance Analysis</CardTitle>
-                </div>
-                <CardDescription>Detect suspicious patterns in today's attendance data.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SuspiciousActivityChecker classItem={classItem} attendanceRecords={attendanceRecords} />
-              </CardContent>
-            </Card>
+           <Tabs defaultValue="live">
+             <TabsList>
+                <TabsTrigger value="live">Live Attendance</TabsTrigger>
+                <TabsTrigger value="history">Attendance History</TabsTrigger>
+                <TabsTrigger value="ai">AI Analysis</TabsTrigger>
+             </TabsList>
+             <TabsContent value="live" className="mt-4">
+                <Card className="bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Users className="h-5 w-5 text-primary"/>
+                                <CardTitle>Live Attendance ({today})</CardTitle>
+                            </div>
+                            <CardDescription>Students who have marked attendance today.</CardDescription>
+                        </div>
+                         <Button variant="outline" size="sm" onClick={() => handleExport(liveAttendanceRecords, new Date())} disabled={liveAttendanceRecords.length === 0}>
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <AttendanceTable records={liveAttendanceRecords} />
+                  </CardContent>
+                </Card>
+             </TabsContent>
+              <TabsContent value="history" className="mt-4">
+                 <Card className="bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>View Past Attendance</CardTitle>
+                                <CardDescription>Select a date to view and export attendance records.</CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => handleExport(historicalRecords, historyDate)} disabled={historicalRecords.length === 0}>
+                                <Download className="mr-2 h-4 w-4" /> Export CSV
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className="w-[280px] justify-start text-left font-normal"
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {historyDate ? format(historyDate, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={historyDate}
+                                    onSelect={setHistoryDate}
+                                    initialFocus
+                                    disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                             <Button onClick={handleFetchHistory} disabled={!historyDate || isHistoryLoading}>
+                                {isHistoryLoading ? 'Loading...' : 'View Attendance'}
+                            </Button>
+                        </div>
+                        {isHistoryLoading ? <Skeleton className="h-48 w-full" /> : <AttendanceTable records={historicalRecords} />}
+                    </CardContent>
+                 </Card>
+              </TabsContent>
+               <TabsContent value="ai" className="mt-4">
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                            <Cpu className="h-5 w-5 text-primary"/>
+                            <CardTitle>AI Attendance Analysis</CardTitle>
+                            </div>
+                            <CardDescription>Detect suspicious patterns in today's live attendance data.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <SuspiciousActivityChecker classItem={classItem} attendanceRecords={liveAttendanceRecords} />
+                        </CardContent>
+                    </Card>
+               </TabsContent>
+           </Tabs>
           </div>
           
           <div className="lg:col-span-1">
@@ -195,3 +317,5 @@ export default function TeacherClassPage() {
     </div>
   );
 }
+
+    

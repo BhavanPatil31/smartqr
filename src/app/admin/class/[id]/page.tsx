@@ -2,14 +2,12 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { getClassById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, ChevronLeft, Clock } from 'lucide-react';
+import { Users, ChevronLeft, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,16 +17,27 @@ import { db } from '@/lib/firebase';
 import { LogOut } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { getAttendanceForDate as getAttendanceForDateAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function AdminClassViewPage() {
   const params = useParams();
   const router = useRouter();
   const classId = params.id as string;
+  const { toast } = useToast();
   
   const [classItem, setClassItem] = useState<Class | null>(null);
   const [loading, setLoading] = useState(true);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [liveAttendanceRecords, setLiveAttendanceRecords] = useState<AttendanceRecord[]>([]);
+
+  // State for historical attendance
+  const [historyDate, setHistoryDate] = useState<Date | undefined>(new Date());
+  const [historicalRecords, setHistoricalRecords] = useState<AttendanceRecord[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (!classId) return;
@@ -52,10 +61,9 @@ export default function AdminClassViewPage() {
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
-      setAttendanceRecords(records);
+      setLiveAttendanceRecords(records);
     }, (error) => {
       console.error("Error fetching attendance: ", error);
-      // Handle permission errors if necessary
     });
 
     return () => unsubscribe();
@@ -65,6 +73,21 @@ export default function AdminClassViewPage() {
     await auth.signOut();
     router.push('/');
   };
+  
+   const handleFetchHistory = async () => {
+    if (!historyDate || !classId) return;
+    setIsHistoryLoading(true);
+    try {
+        const dateStr = format(historyDate, 'yyyy-MM-dd');
+        const records = await getAttendanceForDateAction(classId, dateStr);
+        setHistoricalRecords(records);
+    } catch (error) {
+        console.error("Failed to fetch history:", error);
+        toast({ title: "Error", description: "Could not fetch attendance history.", variant: "destructive" });
+    } finally {
+        setIsHistoryLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -119,19 +142,66 @@ export default function AdminClassViewPage() {
           </div>
         </div>
 
-        <Card className="bg-card/50 backdrop-blur-sm">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary"/>
-              <CardTitle>Live Attendance ({today})</CardTitle>
-            </div>
-            <CardDescription>Read-only view of students who have marked attendance today.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AttendanceTable records={attendanceRecords} />
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="live">
+            <TabsList>
+                <TabsTrigger value="live">Live Attendance</TabsTrigger>
+                <TabsTrigger value="history">Attendance History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="live" className="mt-4">
+                <Card className="bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary"/>
+                        <CardTitle>Live Attendance ({today})</CardTitle>
+                        </div>
+                        <CardDescription>Read-only view of students who have marked attendance today.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AttendanceTable records={liveAttendanceRecords} />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+                 <Card className="bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle>View Past Attendance</CardTitle>
+                        <CardDescription>Select a date to view attendance records.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className="w-[280px] justify-start text-left font-normal"
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {historyDate ? format(historyDate, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={historyDate}
+                                    onSelect={setHistoryDate}
+                                    initialFocus
+                                    disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                             <Button onClick={handleFetchHistory} disabled={!historyDate || isHistoryLoading}>
+                                {isHistoryLoading ? 'Loading...' : 'View Attendance'}
+                            </Button>
+                        </div>
+                        {isHistoryLoading ? <Skeleton className="h-48 w-full" /> : <AttendanceTable records={historicalRecords} />}
+                    </CardContent>
+                 </Card>
+              </TabsContent>
+        </Tabs>
+
       </main>
     </div>
   );
 }
+
+    
