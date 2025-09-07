@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
@@ -203,5 +204,3 @@ export default function AdminClassViewPage() {
     </div>
   );
 }
-
-    

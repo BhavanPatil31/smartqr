@@ -1,9 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper function to check if a user is an admin of a certain department
+    function isAdminOfDepartment(department) {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
+    }
     
-    // --- PROFILE RULES ---
-    // Users can only read and write to their own profile document.
+    // Helper function to check if a user is the teacher of a class
+    function isTeacherOfClass(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
+    // USER PROFILE RULES
     match /students/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -14,50 +23,39 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- CLASS & ATTENDANCE RULES ---
+    // LIST RULES FOR ADMINS (Read-only)
     match /classes/{classId} {
-      // Any authenticated user can view a class's details.
+        allow list: if request.auth != null && isAdminOfDepartment(resource.data.department);
+    }
+     match /teachers/{teacherId} {
+        allow list: if request.auth != null && isAdminOfDepartment(resource.data.department);
+    }
+     match /students/{studentId} {
+        allow list: if request.auth != null && isAdminOfDepartment(resource.data.department);
+    }
+    
+    // CLASS RULES
+    match /classes/{classId} {
+      // Teachers and Admins of the same department can get/read classes.
       allow get: if request.auth != null;
       
-      // Teachers can create classes.
-      allow create: if request.auth != null;
+      // Only authenticated teachers can create a class.
+      allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
       
-      // Only the assigned teacher can update or delete a class.
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      // Only the teacher who created the class can update or delete it.
+      allow update, delete: if request.auth != null && isTeacherOfClass(classId);
 
-      // Teachers and Students need to list all classes for their dashboards.
-      // Admins will use a more specific rule below.
-      allow list: if request.auth != null;
+      // ATTENDANCE SUBCOLLECTION RULES
+      match /attendance/{date}/records/{recordId} {
+        // Students can create their own attendance record.
+        allow create: if request.auth != null && request.auth.uid == recordId;
 
-      // --- ATTENDANCE SUBCOLLECTION ---
-      match /attendance/{date}/records/{studentId} {
-        // A student can create their own attendance record.
-        allow create: if request.auth != null && request.auth.uid == studentId;
+        // An authenticated user can read an attendance record if they are the student, the class teacher, or an admin of the department.
+        allow get: if request.auth != null && (request.auth.uid == recordId || isTeacherOfClass(classId) || isAdminOfDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department));
         
-        // A student can read their OWN record. The class teacher can read ALL records.
-        allow read: if request.auth != null && (request.auth.uid == studentId || get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid);
-        
-        // The class teacher can list all attendance records.
-        allow list: if request.auth != null && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+        // A class teacher or an admin of the department can list all attendance records for a class on a given date.
+        allow list: if request.auth != null && (isTeacherOfClass(classId) || isAdminOfDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department));
       }
-    }
-    
-    // --- ADMIN-SPECIFIC RULES FOR DEPARTMENTAL LISTS ---
-    // These rules allow admins to list documents where the department matches their own.
-    
-    // Admins can list all classes within their department.
-    match /classes/{classId} {
-        allow list: if request.auth != null && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == resource.data.department;
-    }
-
-    // Admins can list all teachers within their department.
-    match /teachers/{teacherId} {
-      allow list: if request.auth != null && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == resource.data.department;
-    }
-
-    // Admins can list all students within their department.
-    match /students/{studentId} {
-       allow list: if request.auth != null && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == resource.data.department;
     }
   }
 }
