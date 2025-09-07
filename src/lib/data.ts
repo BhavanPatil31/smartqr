@@ -46,6 +46,13 @@ export interface TimeSlot {
     end: string; // "HH:mm"
 }
 
+export interface Schedule {
+    day: string;
+    startTime: string;
+    endTime: string;
+    roomNumber: string;
+}
+
 export interface Class {
     id: string;
     subject: string;
@@ -53,7 +60,8 @@ export interface Class {
     department: string;
     teacherId: string;
     teacherName: string;
-    timeSlot: TimeSlot;
+    schedules: Schedule[];
+    timeSlot: TimeSlot; // Kept for backward compatibility if needed, but new logic uses schedules
 }
 
 export interface AttendanceRecord {

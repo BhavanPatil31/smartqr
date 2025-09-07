@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db, auth } from '@/lib/firebase';
@@ -26,8 +26,7 @@ import {
 import type { TeacherProfile } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { Calendar, Clock, MapPin, Plus, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, Trash, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -35,14 +34,18 @@ const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const classSchema = z.object({
-  subject: z.string().min(3, "Subject name must be at least 3 characters."),
-  roomNumber: z.string().min(1, "Room number is required."),
-  department: z.string().min(1, "Please select a department."),
-  semester: z.string().min(1, "Please select a semester."),
-  days: z.array(z.string()).min(1, "Please select at least one class day."),
+const scheduleSchema = z.object({
+  day: z.string().min(1, "Please select a day."),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:mm)."),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:mm)."),
+  roomNumber: z.string().min(1, "Room number is required."),
+});
+
+const classSchema = z.object({
+  subject: z.string().min(3, "Subject name must be at least 3 characters."),
+  department: z.string().min(1, "Please select a department."),
+  semester: z.string().min(1, "Please select a semester."),
+  schedules: z.array(scheduleSchema).min(1, "Please add at least one schedule."),
   maxStudents: z.coerce.number().int().positive("Must be a positive number.").optional(),
 });
 
@@ -59,15 +62,18 @@ export function CreateClassForm() {
     resolver: zodResolver(classSchema),
     defaultValues: {
         subject: '',
-        roomNumber: '',
         department: '',
         semester: '',
-        days: [],
-        startTime: '',
-        endTime: '',
+        schedules: [{ day: '', startTime: '', endTime: '', roomNumber: '' }],
         maxStudents: '' as any, // Initialize to prevent uncontrolled -> controlled error
     }
   });
+  
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "schedules"
+  });
+
 
   const handleCreateClass = async (values: ClassFormValues) => {
     if (!user) {
@@ -84,28 +90,18 @@ export function CreateClassForm() {
       }
       const teacherProfile = teacherDocSnap.data() as TeacherProfile;
 
-      // Create a separate class document for each selected day
-      const creationPromises = values.days.map(day => {
-        return addDoc(collection(db, 'classes'), {
-            subject: values.subject,
-            roomNumber: values.roomNumber,
-            department: values.department,
-            semester: values.semester,
-            teacherId: user.uid,
-            teacherName: teacherProfile.fullName,
-            maxStudents: values.maxStudents || null,
-            timeSlot: {
-            day: day, // The schema expects a single day
-            start: values.startTime,
-            end: values.endTime,
-            },
-            createdAt: serverTimestamp(),
-        });
+      await addDoc(collection(db, 'classes'), {
+        subject: values.subject,
+        department: values.department,
+        semester: values.semester,
+        teacherId: user.uid,
+        teacherName: teacherProfile.fullName,
+        maxStudents: values.maxStudents || null,
+        schedules: values.schedules,
+        createdAt: serverTimestamp(),
       });
       
-      await Promise.all(creationPromises);
-
-      toast({ title: 'Success', description: `${values.days.length} class(es) created successfully!` });
+      toast({ title: 'Success', description: `Class "${values.subject}" created successfully!` });
       router.push('/teacher/dashboard');
       form.reset();
     } catch (error) {
@@ -126,7 +122,7 @@ export function CreateClassForm() {
                            <Plus className="h-5 w-5" />
                            <CardTitle>Class Details</CardTitle>
                         </div>
-                        <CardDescription>Fill in the information to create a new class schedule</CardDescription>
+                        <CardDescription>Fill in the basic information for your class.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -145,24 +141,6 @@ export function CreateClassForm() {
                             />
                              <FormField
                                 control={form.control}
-                                name="roomNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Room Number *</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input placeholder="e.g., Room 101" className="pl-9" {...field} />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <FormField
-                                control={form.control}
                                 name="semester"
                                 render={({ field }) => (
                                     <FormItem>
@@ -179,6 +157,8 @@ export function CreateClassForm() {
                                     </FormItem>
                                 )}
                             />
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <FormField
                                 control={form.control}
                                 name="department"
@@ -197,34 +177,16 @@ export function CreateClassForm() {
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              <FormField
                                 control={form.control}
-                                name="startTime"
+                                name="maxStudents"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Start Time *</FormLabel>
-                                    <FormControl>
-                                         <div className="relative">
-                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input type="time" className="pl-9" {...field} />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="endTime"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>End Time *</FormLabel>
+                                    <FormLabel>Maximum Students</FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input type="time" className="pl-9" {...field} />
+                                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input type="number" placeholder="e.g., 50" className="pl-9" {...field} />
                                         </div>
                                     </FormControl>
                                     <FormMessage />
@@ -232,65 +194,115 @@ export function CreateClassForm() {
                                 )}
                             />
                         </div>
-                         <FormField
-                            control={form.control}
-                            name="days"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Class Days *</FormLabel>
-                                <FormControl>
-                                     <ToggleGroup 
-                                        type="multiple" 
-                                        variant="outline"
-                                        className="justify-start flex-wrap gap-2"
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                     >
-                                        {DAYS.map(day => (
-                                            <ToggleGroupItem key={day} value={day} aria-label={`Toggle ${day}`} className="w-24">
-                                                {day}
-                                            </ToggleGroupItem>
-                                        ))}
-                                    </ToggleGroup>
-                                </FormControl>
-                                <FormDescription>Select the days when this class occurs</FormDescription>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="maxStudents"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Maximum Students</FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input type="number" placeholder="e.g., 50" className="pl-9" {...field} />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <Button type="submit" size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white" disabled={isSaving}>
-                           <Plus className="mr-2 h-4 w-4"/>
-                           {isSaving ? 'Creating...' : 'Create Class'}
-                        </Button>
                     </CardContent>
                 </Card>
+                
+                 <Card>
+                    <CardHeader>
+                        <div className='flex items-center justify-between'>
+                            <div className='space-y-1.5'>
+                                <CardTitle>Class Schedules</CardTitle>
+                                <CardDescription>Add one or more weekly schedules for this class.</CardDescription>
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={() => append({ day: '', startTime: '', endTime: '', roomNumber: '' })}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Schedule
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {fields.map((field, index) => (
+                          <div key={field.id} className="p-4 border rounded-md space-y-4 relative bg-muted/50">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <FormField
+                                control={form.control}
+                                name={`schedules.${index}.day`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Day *</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                               />
+                               <FormField
+                                control={form.control}
+                                name={`schedules.${index}.roomNumber`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Room Number *</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input placeholder="e.g., Room 101" className="pl-9" {...field} />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                               />
+                            </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name={`schedules.${index}.startTime`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Start Time *</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input type="time" className="pl-9" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`schedules.${index}.endTime`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>End Time *</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input type="time" className="pl-9" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                             </div>
+                              {fields.length > 1 && (
+                                <Button type="button" variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => remove(index)}>
+                                    <Trash className="h-4 w-4" />
+                                </Button>
+                            )}
+                          </div>  
+                        ))}
+                    </CardContent>
+                </Card>
+
+                <Button type="submit" size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white" disabled={isSaving}>
+                   <Plus className="mr-2 h-4 w-4"/>
+                   {isSaving ? 'Creating...' : 'Create Class'}
+                </Button>
             </form>
         </Form>
          <Alert>
             <Calendar className="h-4 w-4" />
-            <AlertTitle>Class Scheduling Tips</AlertTitle>
+            <AlertTitle>Scheduling Information</AlertTitle>
             <AlertDescription>
-                <ul className="list-disc pl-5 space-y-1 mt-2">
-                    <li>A separate class will be created for each day you select.</li>
-                    <li>QR codes are generated for each class instance automatically.</li>
-                    <li>Students can only mark attendance during the scheduled time window.</li>
-                </ul>
+                A single class can now have multiple schedules. This is useful for subjects that occur on different days or times throughout the week.
             </AlertDescription>
         </Alert>
     </div>
