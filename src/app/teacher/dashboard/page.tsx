@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { User, PlusCircle, LogOut } from 'lucide-react';
-import { CreateClassDialog } from '@/components/CreateClassDialog';
 import type { Class } from '@/lib/data';
 
 export default function TeacherDashboard() {
@@ -20,7 +19,6 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
-  const [isCreateClassOpen, setCreateClassOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,12 +87,12 @@ export default function TeacherDashboard() {
               <h1 className="font-bold text-2xl">Your Classes</h1>
               <p className="text-muted-foreground">Manage your existing classes or create a new one.</p>
             </div>
-            <CreateClassDialog open={isCreateClassOpen} onOpenChange={setCreateClassOpen}>
-                <Button onClick={() => setCreateClassOpen(true)}>
+            <Button asChild>
+                <Link href="/teacher/create-class">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create New Class
-                </Button>
-            </CreateClassDialog>
+                </Link>
+            </Button>
         </div>
         {classes.length > 0 ? (
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -111,12 +109,12 @@ export default function TeacherDashboard() {
               <p className="text-sm text-muted-foreground">
                 Get started by creating your first class.
               </p>
-               <CreateClassDialog open={isCreateClassOpen} onOpenChange={setCreateClassOpen}>
-                <Button className="mt-4" onClick={() => setCreateClassOpen(true)}>
+               <Button asChild className="mt-4">
+                 <Link href="/teacher/create-class">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Class
-                </Button>
-              </CreateClassDialog>
+                 </Link>
+              </Button>
             </div>
           </div>
         )}
