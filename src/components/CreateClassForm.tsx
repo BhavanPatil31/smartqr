@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils';
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const classSchema = z.object({
   subject: z.string().min(3, "Subject name must be at least 3 characters."),
@@ -65,6 +65,7 @@ export function CreateClassForm() {
         days: [],
         startTime: '',
         endTime: '',
+        maxStudents: '' as any, // Initialize to prevent uncontrolled -> controlled error
     }
   });
 
@@ -246,7 +247,7 @@ export function CreateClassForm() {
                                         onValueChange={field.onChange}
                                      >
                                         {DAYS.map(day => (
-                                            <ToggleGroupItem key={day} value={day} aria-label={`Toggle ${day}`} className="w-16">
+                                            <ToggleGroupItem key={day} value={day} aria-label={`Toggle ${day}`} className="w-24">
                                                 {day}
                                             </ToggleGroupItem>
                                         ))}
@@ -286,9 +287,9 @@ export function CreateClassForm() {
             <AlertTitle>Class Scheduling Tips</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 space-y-1 mt-2">
-                    <li>QR codes will be automatically generated for each class.</li>
-                    <li>Students can only scan during the scheduled time window.</li>
-                    <li>You can modify class details after creation.</li>
+                    <li>A separate class will be created for each day you select.</li>
+                    <li>QR codes are generated for each class instance automatically.</li>
+                    <li>Students can only mark attendance during the scheduled time window.</li>
                 </ul>
             </AlertDescription>
         </Alert>
