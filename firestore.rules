@@ -1,13 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the requesting user is an Admin of a given department
+    // Helper function to check admin role
     function isAdmin(department) {
-      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
+      return request.auth != null && request.auth.token.department == department;
     }
 
-    // PROFILE RULES: Users can only read and write their own profile document.
+    // STUDENT, TEACHER, AND ADMIN PROFILE RULES
     match /students/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -18,16 +17,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // CLASS & ATTENDANCE RULES
+    // CLASS RULES
     match /classes/{classId} {
-      // Any authenticated user can read class information.
-      // List operations are secured by queries in the application code.
+      // Allow authenticated users to get a single class or list classes.
+      // Specific filtering (e.g., by department or teacherId) must be done in the app's queries.
       allow get, list: if request.auth != null;
       
-      // Only authenticated teachers can create classes.
+      // Only authenticated users who are teachers can create a class.
       allow create: if request.auth != null;
-
-      // Only the assigned teacher can update or delete their own class.
+      
+      // Only the teacher assigned to the class can update or delete it.
       allow update, delete: if request.auth != null && resource.data.teacherId == request.auth.uid;
 
       // ATTENDANCE SUBCOLLECTION RULES
@@ -35,21 +34,26 @@ service cloud.firestore {
         // Students can create their own attendance record.
         allow create: if request.auth != null && request.auth.uid == studentId;
         
-        // Students can read their own record.
-        // Teachers can read records for their own classes.
-        // Admins can read records for classes in their department.
-        allow read: if request.auth != null && (
+        // A student can read their OWN record. 
+        // A teacher can read ALL records for a class they teach.
+        // An admin can read ALL records for a class in their department.
+        allow read, list: if request.auth != null && (
           request.auth.uid == studentId ||
           get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
           isAdmin(get(/databases/$(database)/documents/classes/$(classId)).data.department)
         );
-
-        // Teachers and Admins can list all records for classes they have access to.
-        allow list: if request.auth != null && (
-          get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
-          isAdmin(get(/databases/$(database)/documents/classes/$(classId)).data.department)
-        );
       }
+    }
+
+    // Allow admins to list collections based on their department
+    match /classes/{classId} {
+      allow list: if request.auth != null && isAdmin(resource.data.department);
+    }
+     match /teachers/{teacherId} {
+      allow list: if request.auth != null && isAdmin(resource.data.department);
+    }
+     match /students/{studentId} {
+      allow list: if request.auth != null && isAdmin(resource.data.department);
     }
   }
 }
