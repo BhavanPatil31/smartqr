@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/summarize-attendance.ts';
 import '@/ai/flows/detect-suspicious-attendance.ts';
+import '@/ai/flows/get-attendance.ts';

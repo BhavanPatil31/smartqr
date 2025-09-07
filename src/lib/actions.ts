@@ -2,9 +2,8 @@
 'use server';
 
 import { detectSuspiciousAttendance, type DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
+import { getAttendanceForClass } from '@/ai/flows/get-attendance';
 import type { AttendanceRecord } from '@/lib/data';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { unstable_noStore as noStore } from 'next/cache';
 
 export async function checkSuspiciousActivityAction(classId: string, attendanceRecords: AttendanceRecord[]): Promise<DetectSuspiciousAttendanceOutput> {
@@ -26,15 +25,9 @@ export async function checkSuspiciousActivityAction(classId: string, attendanceR
 export async function getAttendanceForDate(classId: string, date: string): Promise<AttendanceRecord[]> {
     noStore(); // Opt out of caching for this server action
     try {
-        const attendanceCollectionRef = collection(db, 'classes', classId, 'attendance', date, 'records');
-        const q = query(attendanceCollectionRef, orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            return [];
-        }
-        
-        return querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+        // Call the secure Genkit flow instead of a direct DB query
+        const records = await getAttendanceForClass({ classId, date });
+        return records;
     } catch (error) {
         console.error(`Failed to get attendance for ${classId} on ${date}:`, error);
         // In a real app, you might want to handle this more gracefully
@@ -42,5 +35,3 @@ export async function getAttendanceForDate(classId: string, date: string): Promi
         throw new Error('Could not fetch attendance records.');
     }
 }
-
-    
