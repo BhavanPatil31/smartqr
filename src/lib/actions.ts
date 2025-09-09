@@ -38,8 +38,7 @@ export async function getStudentAttendanceStats(studentId: string, department: s
     noStore();
     try {
         const studentClasses = await getStudentClasses(department, semester);
-        // Use the corrected function to fetch records
-        const attendanceRecords = await getCorrectStudentAttendanceRecords(studentId, department, semester);
+        const attendanceRecords = await getCorrectStudentAttendanceRecords(studentId, studentClasses);
 
         // This is a simplified calculation. It assumes one class session per day per class schedule.
         // A more complex system might track total number of classes held.

@@ -128,12 +128,10 @@ export const getStudentsByDepartment = async (department: string) => {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
 }
 
-
 // Corrected function to be used instead
-export const getCorrectStudentAttendanceRecords = async (studentId: string, department: string, semester: string): Promise<AttendanceRecord[]> => {
-    const studentClasses = await getStudentClasses(department, semester);
+export const getCorrectStudentAttendanceRecords = async (studentId: string, studentClasses: Class[]): Promise<AttendanceRecord[]> => {
     if (studentClasses.length === 0) return [];
-    
+
     let allRecords: AttendanceRecord[] = [];
 
     for (const cls of studentClasses) {
