@@ -15,7 +15,7 @@ import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Class, AttendanceRecord } from '@/lib/data';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -88,7 +88,13 @@ export default function TeacherClassPage() {
     } finally {
         setIsHistoryLoading(false);
     }
-  }
+  };
+
+  // Effect to auto-fetch today's attendance for history tab on first load
+  useEffect(() => {
+    handleFetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExport = (records: AttendanceRecord[], date: Date | undefined) => {
     if (records.length === 0) {

@@ -1,10 +1,9 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, CheckCircle, XCircle, ScanLine, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { Class, Schedule } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -18,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 const isClassTime = (schedules: Schedule[]) => {
   if (!schedules) return false;
   const timeZone = 'Asia/Kolkata';
-  const now = toDate(new Date());
+  const now = new Date();
   const dayOfWeek = format(now, 'EEEE', { timeZone });
 
   return schedules.some(schedule => {
@@ -44,134 +43,36 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   const { toast } = useToast();
   
   const [status, setStatus] = useState<'idle' | 'scanning' | 'verifying' | 'success' | 'failure' | 'already_marked' | 'wrong_qr' | 'not_class_time'>('idle');
-  const [isWithinClassTime, setIsWithinClassTime] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameId = useRef<number>();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
-  // 1. Check if class is in session and if attendance is already marked
-  useEffect(() => {
-    const checkIfMarked = async () => {
-        if (user) {
-            const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
-            const attendanceRef = collection(db, 'classes', classItem.id, 'attendance', todayStr, 'records');
-            const q = query(attendanceRef, where('studentId', '==', user.uid));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                setStatus('already_marked');
-                return true;
-            }
-        }
-        return false;
-    };
-    
-    const checkTime = () => {
-      const isTime = isClassTime(classItem.schedules);
-      setIsWithinClassTime(isTime);
-      return isTime;
-    };
-
-    const runChecks = async () => {
-      const isMarked = await checkIfMarked();
-      if(isMarked) return;
-
-      const isTime = checkTime();
-       if (!isTime) {
-          setStatus('not_class_time');
-      } else {
-          // If it is class time, and not marked, reset to idle to allow scanning
-          setStatus('idle');
-      }
-    };
-    
-    runChecks();
-
-    const interval = setInterval(runChecks, 30000); // Check every 30 seconds
-    
-    return () => clearInterval(interval);
-  }, [classItem.schedules, classItem.id, user]);
-
-  // 2. Handle camera permission and scanning logic
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const tick = () => {
-      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
-            canvas.height = video.videoHeight;
-            canvas.width = video.videoWidth;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-
-            if (code) {
-                verifyAndMarkAttendance(code.data);
-                // Stop scanning after finding a code
-                setStatus('verifying');
-                if (videoRef.current && videoRef.current.srcObject) {
-                    const stream = videoRef.current.srcObject as MediaStream;
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                cancelAnimationFrame(animationFrameId);
-            } else {
-                animationFrameId = requestAnimationFrame(tick);
-            }
-        }
-      } else {
-        animationFrameId = requestAnimationFrame(tick);
-      }
-    };
-    
-    if (status === 'scanning' && hasCameraPermission) {
-      animationFrameId = requestAnimationFrame(tick);
+  const stopScan = useCallback(() => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
     }
-    
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [status, hasCameraPermission]);
-
-
-  const startScan = async () => {
-    setStatus('scanning');
-    setHasCameraPermission(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      setHasCameraPermission(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setHasCameraPermission(false);
-      setStatus('failure');
-      toast({
-        variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings.',
-      });
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
-  };
+  }, []);
 
-  const verifyAndMarkAttendance = async (scannedData: string) => {
+  const verifyAndMarkAttendance = useCallback(async (scannedData: string) => {
     if (!user) return;
+    setStatus('verifying');
+    stopScan();
     
     let scannedClassId = '';
     try {
         const url = new URL(scannedData);
         const pathParts = url.pathname.split('/');
-        // Assuming URL is like /student/class/CLASS_ID
         if (pathParts[1] === 'student' && pathParts[2] === 'class' && pathParts[3]) {
             scannedClassId = pathParts[3];
         }
     } catch (e) {
-        // Not a valid URL, could be just the ID
         scannedClassId = scannedData;
     }
 
@@ -212,8 +113,99 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
           variant: "destructive"
         });
     }
-  };
+  }, [user, classItem.id, toast, stopScan]);
 
+
+  // Main check effect
+  useEffect(() => {
+    const runChecks = async () => {
+      if (!user) return;
+      const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
+      const attendanceRef = collection(db, 'classes', classItem.id, 'attendance', todayStr, 'records');
+      const q = query(attendanceRef, where('studentId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        setStatus('already_marked');
+        return;
+      }
+      
+      if (isClassTime(classItem.schedules)) {
+        if(status !== 'scanning') setStatus('idle');
+      } else {
+        setStatus('not_class_time');
+      }
+    };
+    
+    runChecks();
+    const interval = setInterval(runChecks, 30000);
+    return () => {
+        clearInterval(interval);
+        stopScan();
+    };
+  }, [user, classItem.id, classItem.schedules, status, stopScan]);
+
+
+  // Scanning logic effect
+  useEffect(() => {
+    const tick = () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        if (ctx) {
+            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+
+            if (code) {
+                verifyAndMarkAttendance(code.data);
+            } else {
+                animationFrameId.current = requestAnimationFrame(tick);
+            }
+        }
+      } else {
+        animationFrameId.current = requestAnimationFrame(tick);
+      }
+    };
+    
+    if (status === 'scanning' && hasCameraPermission) {
+      animationFrameId.current = requestAnimationFrame(tick);
+    }
+    
+    return () => {
+      if(animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    };
+  }, [status, hasCameraPermission, verifyAndMarkAttendance]);
+
+
+  const startScan = async () => {
+    setStatus('scanning');
+    setHasCameraPermission(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setHasCameraPermission(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      setStatus('failure');
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings.',
+      });
+    }
+  };
+  
+  const isButtonDisabled = status !== 'idle';
+  
   const renderContent = () => {
     switch(status) {
         case 'scanning':
@@ -231,7 +223,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
                     )}
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-2/3 h-2/3 border-4 border-dashed border-primary/50 rounded-lg" />
-                        <div className="absolute top-0 h-1 w-full bg-primary/80 animate-[scan_2s_ease-in-out_infinite]" />
+                        <div className="absolute top-0 h-1 w-full bg-primary/80 animate-scan" style={{ animationName: 'scan' }} />
                     </div>
                     <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-white bg-black/50 px-2 py-1 rounded-md">Point camera at the class QR code</p>
                 </div>
@@ -250,13 +242,12 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>Something went wrong. Please try again. <Button variant="link" className="p-0 h-auto" onClick={() => setStatus('idle')}>Retry</Button></AlertDescription></Alert>;
         case 'idle':
         default:
-            const isButtonDisabled = !isWithinClassTime || status !== 'idle';
             return (
                 <div className="flex flex-col items-center space-y-2">
                     <Button onClick={startScan} disabled={isButtonDisabled} size="lg">
                         <Camera className="mr-2" /> Scan to Mark Attendance
                     </Button>
-                    {isButtonDisabled && status !== 'already_marked' && (
+                    {isButtonDisabled && status === 'not_class_time' && (
                         <p className="text-sm text-destructive">This class is not in session.</p>
                     )}
                 </div>

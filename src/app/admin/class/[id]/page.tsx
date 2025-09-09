@@ -88,7 +88,13 @@ export default function AdminClassViewPage() {
     } finally {
         setIsHistoryLoading(false);
     }
-  }
+  };
+
+  // Effect to auto-fetch today's attendance for history tab on first load
+   useEffect(() => {
+     handleFetchHistory();
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
   if (loading) {
     return (

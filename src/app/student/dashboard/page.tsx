@@ -29,6 +29,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -52,27 +53,29 @@ export default function StudentDashboard() {
           const studentProfile = docSnap.data() as StudentProfile;
           setProfile(studentProfile);
           
-          if (studentProfile.department && studentProfile.semester) {
+          const profileComplete = !!(studentProfile.department && studentProfile.semester);
+          setIsProfileComplete(profileComplete);
+
+          if (profileComplete) {
             const attendanceStats = await getStudentAttendanceStats(user.uid);
             setStats(attendanceStats);
           } else {
-            // If profile is incomplete, set stats to null to show profile completion message
             setStats(null);
           }
         } else {
             setProfile(null);
             setStats(null);
+            setIsProfileComplete(false);
         }
       } catch (error) {
           console.error("Failed to fetch student data:", error);
-          // Set stats to a default state on error to avoid showing wrong message
           setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });
       } finally {
         setIsLoadingData(false);
       }
     };
 
-    if (!loading) {
+    if (!loading && user) {
         fetchProfileAndStats();
     }
   }, [user, loading]);
@@ -132,7 +135,7 @@ export default function StudentDashboard() {
           </div>
         </div>
         
-        {stats !== null ? (
+        {isProfileComplete && stats ? (
              <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
                  <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
                     <CardHeader>
@@ -172,14 +175,18 @@ export default function StudentDashboard() {
             <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-1 text-center p-8">
                 <h3 className="text-2xl font-bold tracking-tight">
-                    Complete Your Profile
+                    {isProfileComplete ? "No Data Available" : "Complete Your Profile"}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    Please provide your department and semester so we can calculate your attendance.
+                    {isProfileComplete 
+                        ? "There is no attendance data to display for your classes yet."
+                        : "Please provide your department and semester to view your attendance."}
                 </p>
-                <Button asChild className="mt-4">
-                    <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
-                </Button>
+                {!isProfileComplete && (
+                    <Button asChild className="mt-4">
+                        <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
+                    </Button>
+                )}
                 </div>
             </div>
         )}

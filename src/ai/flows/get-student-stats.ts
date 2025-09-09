@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getCorrectStudentAttendanceRecords } from '@/lib/data';
-import { differenceInWeeks, parseISO } from 'date-fns';
+import { differenceInWeeks, parseISO, startOfDay } from 'date-fns';
 
 const GetStudentStatsInputSchema = z.object({
   studentId: z.string().describe('The ID of the student.'),
@@ -44,14 +44,17 @@ const getStudentStatsFlow = ai.defineFlow(
         
         // A more accurate system to calculate total classes held up to today.
         // We can assume a fixed start date for the current semester.
-        const semesterStartDate = parseISO('2024-07-15');
-        const today = new Date();
-        const weeksPassed = differenceInWeeks(today, semesterStartDate) + 1;
-
-        if (studentClasses.length > 0 && weeksPassed > 0) {
-            studentClasses.forEach(c => {
-                totalClassesHeld += (c.schedules?.length || 0) * weeksPassed;
-            });
+        const semesterStartDate = startOfDay(parseISO('2024-07-15'));
+        const today = startOfDay(new Date());
+        
+        if (today >= semesterStartDate) {
+            const weeksPassed = differenceInWeeks(today, semesterStartDate, { roundingMethod: 'floor' }) + 1;
+    
+            if (studentClasses.length > 0 && weeksPassed > 0) {
+                studentClasses.forEach(c => {
+                    totalClassesHeld += (c.schedules?.length || 0) * weeksPassed;
+                });
+            }
         }
         
         const attendedClasses = attendanceRecords.length;
