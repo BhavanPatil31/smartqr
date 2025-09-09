@@ -10,7 +10,7 @@ import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, LogOut, BookOpen, Users, GraduationCap, ChevronDown } from 'lucide-react';
+import { User, LogOut, BookOpen, Users, GraduationCap, ChevronDown, PanelLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { getClassesByDepartment, getTeachersByDepartment, getStudentsByDepartment } from '@/lib/data';
 
 import type { AdminProfile, Class, TeacherProfile, StudentProfile } from '@/lib/data';
+import { Sidebar, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
 
@@ -96,13 +97,8 @@ export default function AdminDashboard() {
 
   if (loading || isLoadingData) {
     return (
-      <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
-        <Header>
-          <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-24" />
-              <Skeleton className="h-9 w-24" />
-          </div>
-        </Header>
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <Header left={<Skeleton className="h-9 w-9" />} />
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <div className="flex items-center justify-between">
             <div className='space-y-2'>
@@ -121,161 +117,169 @@ export default function AdminDashboard() {
   }
   
   return (
-    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
-      <Header>
-         <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-                <Link href="/admin/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-            </Button>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-         </div>
-      </Header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Admin'}</h1>
-            <p className="text-muted-foreground">{profile?.department ? `${profile.department} Department Overview` : 'Please select a department in your profile'}</p>
-          </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <Sidebar>
+            <div className="flex-1 overflow-y-auto">
+                 <div className="flex flex-col gap-4 p-4">
+                    <Button asChild variant="outline" className="justify-start">
+                        <Link href="/admin/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+                    </Button>
+                 </div>
+            </div>
+            <div className="p-4 mt-auto">
+                <Button onClick={handleLogout} variant="outline" size="sm" className="w-full justify-start">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+            </div>
+        </Sidebar>
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <Header left={<SidebarTrigger />} />
+            <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+                <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Admin'}</h1>
+                    <p className="text-muted-foreground">{profile?.department ? `${profile.department} Department Overview` : 'Please select a department in your profile'}</p>
+                </div>
+                </div>
+                
+                <Tabs defaultValue="classes" className="w-full mt-6">
+                    <TabsList>
+                        <TabsTrigger value="classes"><BookOpen className="mr-2"/>Classes</TabsTrigger>
+                        <TabsTrigger value="teachers"><Users className="mr-2"/>Teachers</TabsTrigger>
+                        <TabsTrigger value="students"><GraduationCap className="mr-2"/>Students</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="classes">
+                        <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                            <CardHeader>
+                                <CardTitle>Department Classes</CardTitle>
+                                <CardDescription>All classes scheduled for the {profile?.department} department. Click a class to view its attendance.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="p-0 hover:bg-transparent">
+                                                    Semester
+                                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                                </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                <DropdownMenuRadioGroup value={classSemesterFilter} onValueChange={setClassSemesterFilter}>
+                                                    <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
+                                                    {SEMESTERS.map(s => (
+                                                        <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
+                                                    ))}
+                                                    </DropdownMenuRadioGroup>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            </TableHead>
+                                            <TableHead>Teacher</TableHead>
+                                            <TableHead>Schedule</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredClasses.map(c => (
+                                            <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/class/${c.id}`)}>
+                                                <TableCell>{c.subject}</TableCell>
+                                                <TableCell>{c.semester}</TableCell>
+                                                <TableCell>{c.teacherName}</TableCell>
+                                                <TableCell>
+                                                {c.schedules?.map((s, i) => (
+                                                    <div key={i}>{s.day}, {s.startTime} - {s.endTime}</div>
+                                                ))}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="teachers">
+                        <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                            <CardHeader>
+                                <CardTitle>Department Faculty</CardTitle>
+                                <CardDescription>All teachers in the {profile?.department} department.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Phone Number</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {teachers.map(t => (
+                                            <TableRow key={t.email}>
+                                                <TableCell>{t.fullName}</TableCell>
+                                                <TableCell>{t.email}</TableCell>
+                                                <TableCell>{t.phoneNumber}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="students">
+                        <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                            <CardHeader>
+                                <CardTitle>Department Students</CardTitle>
+                                <CardDescription>All students enrolled in the {profile?.department} department.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>USN</TableHead>
+                                            <TableHead>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="p-0 hover:bg-transparent">
+                                                    Semester
+                                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                                </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                <DropdownMenuRadioGroup value={studentSemesterFilter} onValueChange={setStudentSemesterFilter}>
+                                                    <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
+                                                    {SEMESTERS.map(s => (
+                                                        <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
+                                                    ))}
+                                                    </DropdownMenuRadioGroup>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            </TableHead>
+                                            <TableHead>Email</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredStudents.map(s => (
+                                            <TableRow key={s.email}>
+                                                <TableCell>{s.fullName}</TableCell>
+                                                <TableCell>{s.usn}</TableCell>
+                                                <TableCell>{s.semester}</TableCell>
+                                                <TableCell>{s.email}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </main>
         </div>
-        
-        <Tabs defaultValue="classes" className="w-full">
-            <TabsList>
-                <TabsTrigger value="classes"><BookOpen className="mr-2"/>Classes</TabsTrigger>
-                <TabsTrigger value="teachers"><Users className="mr-2"/>Teachers</TabsTrigger>
-                <TabsTrigger value="students"><GraduationCap className="mr-2"/>Students</TabsTrigger>
-            </TabsList>
-            <TabsContent value="classes">
-                <Card className="mt-4 bg-card/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle>Department Classes</CardTitle>
-                        <CardDescription>All classes scheduled for the {profile?.department} department. Click a class to view its attendance.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" className="p-0 hover:bg-transparent">
-                                            Semester
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                           <DropdownMenuRadioGroup value={classSemesterFilter} onValueChange={setClassSemesterFilter}>
-                                              <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
-                                              {SEMESTERS.map(s => (
-                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
-                                              ))}
-                                            </DropdownMenuRadioGroup>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </TableHead>
-                                    <TableHead>Teacher</TableHead>
-                                    <TableHead>Schedule</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredClasses.map(c => (
-                                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/class/${c.id}`)}>
-                                        <TableCell>{c.subject}</TableCell>
-                                        <TableCell>{c.semester}</TableCell>
-                                        <TableCell>{c.teacherName}</TableCell>
-                                        <TableCell>
-                                          {c.schedules?.map((s, i) => (
-                                            <div key={i}>{s.day}, {s.startTime} - {s.endTime}</div>
-                                          ))}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                         </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="teachers">
-                 <Card className="mt-4 bg-card/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle>Department Faculty</CardTitle>
-                        <CardDescription>All teachers in the {profile?.department} department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Phone Number</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {teachers.map(t => (
-                                    <TableRow key={t.email}>
-                                        <TableCell>{t.fullName}</TableCell>
-                                        <TableCell>{t.email}</TableCell>
-                                        <TableCell>{t.phoneNumber}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                         </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="students">
-                 <Card className="mt-4 bg-card/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle>Department Students</CardTitle>
-                        <CardDescription>All students enrolled in the {profile?.department} department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>USN</TableHead>
-                                    <TableHead>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" className="p-0 hover:bg-transparent">
-                                            Semester
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                           <DropdownMenuRadioGroup value={studentSemesterFilter} onValueChange={setStudentSemesterFilter}>
-                                              <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
-                                              {SEMESTERS.map(s => (
-                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
-                                              ))}
-                                            </DropdownMenuRadioGroup>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </TableHead>
-                                    <TableHead>Email</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredStudents.map(s => (
-                                    <TableRow key={s.email}>
-                                        <TableCell>{s.fullName}</TableCell>
-                                        <TableCell>{s.usn}</TableCell>
-                                        <TableCell>{s.semester}</TableCell>
-                                        <TableCell>{s.email}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                         </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }

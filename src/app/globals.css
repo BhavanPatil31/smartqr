@@ -104,3 +104,16 @@
     background-position: 0% 50%;
   }
 }
+
+@keyframes scan {
+  from {
+    top: 0%;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s linear infinite;
+}

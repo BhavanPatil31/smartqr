@@ -120,6 +120,8 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   useEffect(() => {
     const runChecks = async () => {
       if (!user) return;
+      if (status === 'scanning' || status === 'verifying') return;
+
       const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
       const attendanceRef = collection(db, 'classes', classItem.id, 'attendance', todayStr, 'records');
       const q = query(attendanceRef, where('studentId', '==', user.uid));
@@ -131,7 +133,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
       }
       
       if (isClassTime(classItem.schedules)) {
-        if(status !== 'scanning') setStatus('idle');
+        setStatus('idle');
       } else {
         setStatus('not_class_time');
       }
@@ -223,7 +225,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
                     )}
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-2/3 h-2/3 border-4 border-dashed border-primary/50 rounded-lg" />
-                        <div className="absolute top-0 h-1 w-full bg-primary/80 animate-scan" style={{ animationName: 'scan' }} />
+                        <div className="absolute top-0 h-1 w-full bg-primary/80 animate-scan" />
                     </div>
                     <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-white bg-black/50 px-2 py-1 rounded-md">Point camera at the class QR code</p>
                 </div>
@@ -247,9 +249,6 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
                     <Button onClick={startScan} disabled={isButtonDisabled} size="lg">
                         <Camera className="mr-2" /> Scan to Mark Attendance
                     </Button>
-                    {isButtonDisabled && status === 'not_class_time' && (
-                        <p className="text-sm text-destructive">This class is not in session.</p>
-                    )}
                 </div>
             )
     }
