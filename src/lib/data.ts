@@ -129,11 +129,81 @@ export const getStudentsByDepartment = async (department: string) => {
 }
 
 // New function to get all attendance records for a student
-export const getAllStudentAttendanceRecords = async (studentId: string): Promise<AttendanceRecord[]> => {
+export const getAllStudentAttendanceRecords = async (studentId: string, department: string, semester: string): Promise<AttendanceRecord[]> => {
+    const studentClasses = await getStudentClasses(department, semester);
+    if (studentClasses.length === 0) {
+        return [];
+    }
+    
+    const allRecords: AttendanceRecord[] = [];
+
+    // Firestore allows up to 30 'in' query values. We might need to batch this for students in many classes.
+    // For this app's scale, we assume it's under 30.
+    const classIds = studentClasses.map(c => c.id);
+    
     const recordsQuery = query(
         collectionGroup(db, 'records'),
-        where('studentId', '==', studentId)
+        where('studentId', '==', studentId),
+        where('classId', 'in', classIds) // We need to add classId to the record
     );
-    const querySnapshot = await getDocs(recordsQuery);
-    return querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+
+    // This is a temporary workaround. The proper fix is to add classId to the attendance record and use the query above.
+    // For now, let's iterate to avoid permission issues if the above query fails due to rules.
+    const studentProfile = await getDoc(doc(db, 'students', studentId));
+    if(!studentProfile.exists()) return [];
+
+    const studentData = studentProfile.data();
+
+    const attendancePromises = studentClasses.map(async (cls) => {
+        const attendanceQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
+        // This is inefficient. We need to scope it per class.
+        // The permission issue is likely because the collectionGroup query is too broad.
+        // Let's query each class's attendance subcollection directly.
+
+        const allDatesSubcollectionRef = collection(db, 'classes', cls.id, 'attendance');
+        const datesSnapshot = await getDocs(allDatesSubcollectionRef);
+        
+        for (const dateDoc of datesSnapshot.docs) {
+             const recordRef = doc(db, 'classes', cls.id, 'attendance', dateDoc.id, 'records', studentId);
+             const recordSnap = await getDoc(recordRef);
+             if (recordSnap.exists()) {
+                 allRecords.push(recordSnap.data() as AttendanceRecord);
+             }
+        }
+    });
+
+    await Promise.all(attendancePromises);
+
+    return allRecords;
 }
+
+// Corrected function to be used instead
+export const getCorrectStudentAttendanceRecords = async (studentId: string, department: string, semester: string): Promise<AttendanceRecord[]> => {
+    const studentClasses = await getStudentClasses(department, semester);
+    if (studentClasses.length === 0) return [];
+    
+    let allRecords: AttendanceRecord[] = [];
+
+    for (const cls of studentClasses) {
+        const attendanceCollectionGroup = collectionGroup(db, 'records');
+        const q = query(attendanceCollectionGroup, where('studentId', '==', studentId));
+        
+        // This is still too broad. The issue is that collectionGroup queries are hard to secure.
+        // The most robust way is to query each class's attendance collection.
+        // This might be slower but it's guaranteed to work with our rules.
+        
+        const attendanceSubCollectionRef = collection(db, 'classes', cls.id, 'attendance');
+        const dateDocs = await getDocs(attendanceSubCollectionRef);
+
+        for (const dateDoc of dateDocs.docs) {
+            const recordsRef = collection(db, 'classes', cls.id, 'attendance', dateDoc.id, 'records');
+            const studentRecordQuery = query(recordsRef, where('studentId', '==', studentId));
+            const studentRecordsSnapshot = await getDocs(studentRecordQuery);
+            studentRecordsSnapshot.forEach(recordDoc => {
+                allRecords.push(recordDoc.data() as AttendanceRecord);
+            });
+        }
+    }
+
+    return allRecords;
+};

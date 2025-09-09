@@ -3,7 +3,7 @@
 
 import { detectSuspiciousAttendance, type DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
 import { getAttendanceForClass } from '@/ai/flows/get-attendance';
-import { getAllStudentAttendanceRecords, getStudentClasses } from '@/lib/data';
+import { getCorrectStudentAttendanceRecords, getStudentClasses } from '@/lib/data';
 import type { AttendanceRecord } from '@/lib/data';
 import { unstable_noStore as noStore } from 'next/cache';
 
@@ -38,23 +38,22 @@ export async function getStudentAttendanceStats(studentId: string, department: s
     noStore();
     try {
         const studentClasses = await getStudentClasses(department, semester);
-        const attendanceRecords = await getAllStudentAttendanceRecords(studentId);
+        // Use the corrected function to fetch records
+        const attendanceRecords = await getCorrectStudentAttendanceRecords(studentId, department, semester);
 
         // This is a simplified calculation. It assumes one class session per day per class schedule.
         // A more complex system might track total number of classes held.
-        const today = new Date();
+        // For now, we will calculate based on a 14-week semester for an estimate.
         let totalClassesHeld = 0;
 
         studentClasses.forEach(c => {
-            c.schedules.forEach(s => {
-                // A rough estimate of total classes held so far in a semester (e.g., 14 weeks)
-                // This is not perfect but gives a baseline.
-                 totalClassesHeld += 14; 
-            });
+            // For each class, multiply the number of weekly sessions by 14.
+            totalClassesHeld += (c.schedules?.length || 0) * 14;
         });
         
         const attendedClasses = attendanceRecords.length;
-        const totalClasses = totalClassesHeld > 0 ? totalClassesHeld : attendedClasses; // Avoid division by zero
+        // Ensure totalClasses is at least the number of attended classes
+        const totalClasses = totalClassesHeld > attendedClasses ? totalClassesHeld : attendedClasses;
         const missedClasses = Math.max(0, totalClasses - attendedClasses);
         const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
         
