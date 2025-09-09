@@ -1,42 +1,54 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // PROFILE RULES
+    
+    // Deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Allow users to read/write their own profile data
     match /students/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
     }
     match /teachers/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
     }
     match /admins/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, update: if request.auth.uid == userId;
     }
-
-    // CLASS RULES
+    
+    // Rules for classes collection
     match /classes/{classId} {
-      // Allow any authenticated user to get or list classes.
-      // We will rely on secure queries in the application code to filter them.
-      allow get, list: if request.auth != null;
-
-      // Only authenticated users can create classes.
-      allow create: if request.auth != null;
-
-      // Only the assigned teacher can update or delete their own class.
-      allow update, delete: if request.auth != null && resource.data.teacherId == request.auth.uid;
-
-      // ATTENDANCE SUBCOLLECTION RULES
-      match /attendance/{date}/records/{studentId} {
-        // A student can only create their own attendance record.
-        allow create: if request.auth != null && request.auth.uid == studentId;
+        // Any authenticated user can view class details
+        allow get: if request.auth != null;
         
-        // Only the student who owns the record can read it directly.
-        // Teachers and Admins will use a secure backend flow to get lists of records.
-        allow read: if request.auth != null && request.auth.uid == studentId;
+        // Only teachers can create classes
+        allow create: if request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+        
+        // Only the assigned teacher can update their own class
+        allow update: if request.auth.uid == resource.data.teacherId;
+        
+        // Allow authenticated users to list classes (queries are secured in the app code)
+        allow list: if request.auth != null;
+    }
+    
+    // Rules for attendance records
+    match /classes/{classId}/attendance/{date}/records/{studentId} {
+        // Students can only create their own attendance record
+        allow create: if request.auth.uid == studentId;
 
-        // No one is allowed to list the full sub-collection from the client.
-        // This prevents data leakage and forces the use of the secure backend flow.
-        allow list: if false;
-      }
+        // Teachers and Admins can read attendance records for classes in their department
+        allow get, list: if 
+            (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+            (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == get(/databases/$(database)/documents/classes/$(classId)).data.department);
+    }
+    
+    // Allow students to query their own attendance records across all classes
+    match /{path=**}/records/{studentId} {
+      allow read: if request.auth.uid == resource.data.studentId;
     }
   }
 }

@@ -7,20 +7,28 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Header } from '@/components/Header';
-import { ClassCard } from '@/components/ClassCard';
-import { getStudentClasses } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, LogOut } from 'lucide-react';
-import type { StudentProfile, Class } from '@/lib/data';
+import { User, LogOut, CheckSquare } from 'lucide-react';
+import type { StudentProfile, Class, AttendanceRecord } from '@/lib/data';
+import { getStudentAttendanceStats } from '@/lib/actions';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AttendanceChart } from '@/components/AttendanceChart';
+
+interface AttendanceStats {
+  totalClasses: number;
+  attendedClasses: number;
+  missedClasses: number;
+  attendanceRate: number;
+}
 
 export default function StudentDashboard() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
-  const [classes, setClasses] = useState<Class[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [stats, setStats] = useState<AttendanceStats | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -29,13 +37,13 @@ export default function StudentDashboard() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    const fetchProfileAndClasses = async () => {
+    const fetchProfileAndStats = async () => {
       if (!user) {
-         setIsLoadingClasses(false);
+         setIsLoadingData(false);
          return;
       };
 
-      setIsLoadingClasses(true);
+      setIsLoadingData(true);
       try {
         const docRef = doc(db, 'students', user.uid);
         const docSnap = await getDoc(docRef);
@@ -44,29 +52,25 @@ export default function StudentDashboard() {
           const studentProfile = docSnap.data() as StudentProfile;
           setProfile(studentProfile);
           
-          // Only fetch classes if department and semester are set
           if (studentProfile.department && studentProfile.semester) {
-            const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
-            setClasses(studentClasses);
+            const attendanceStats = await getStudentAttendanceStats(user.uid, studentProfile.department, studentProfile.semester);
+            setStats(attendanceStats);
           } else {
-            // No department/semester, so no classes to show
-            setClasses([]);
+            setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });
           }
         } else {
-            // Profile doesn't exist yet, treat as empty
             setProfile(null);
-            setClasses([]);
+            setStats(null);
         }
       } catch (error) {
           console.error("Failed to fetch student data:", error);
-          setClasses([]); // Ensure we don't get stuck in a loading state on error
       } finally {
-        setIsLoadingClasses(false);
+        setIsLoadingData(false);
       }
     };
 
     if (!loading) {
-        fetchProfileAndClasses();
+        fetchProfileAndStats();
     }
   }, [user, loading]);
 
@@ -75,11 +79,12 @@ export default function StudentDashboard() {
     router.push('/');
   };
 
-  if (loading || isLoadingClasses) {
+  if (loading || isLoadingData) {
     return (
       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
         <Header>
           <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-40" />
               <Skeleton className="h-9 w-24" />
               <Skeleton className="h-9 w-24" />
           </div>
@@ -91,10 +96,9 @@ export default function StudentDashboard() {
               <Skeleton className="h-5 w-64" />
             </div>
           </div>
-          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full" />
-            ))}
+          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
+             <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-40 w-full" /></CardContent></Card>
+             <Card className="lg:col-span-2"><CardHeader><Skeleton className="h-6 w-48" /></CardHeader><CardContent><Skeleton className="h-40 w-full" /></CardContent></Card>
           </div>
         </main>
       </div>
@@ -105,6 +109,9 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
       <Header>
          <div className="flex items-center gap-2">
+            <Button asChild variant="default" size="sm">
+                <Link href="/student/attendance"><CheckSquare className="mr-2 h-4 w-4" /> Mark Attendance</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
                 <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
             </Button>
@@ -118,29 +125,56 @@ export default function StudentDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
-            <p className="text-muted-foreground">Here are the classes for your semester.</p>
+            <p className="text-muted-foreground">Here is your attendance overview.</p>
           </div>
         </div>
-         {classes.length > 0 ? (
-          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {classes.map((classItem) => (
-              <ClassCard key={classItem.id} classItem={classItem} userRole="student" />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-1 text-center p-8">
-              <h3 className="text-2xl font-bold tracking-tight">
-                No classes found
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Please complete your profile or check if classes have been assigned.
-              </p>
-               <Button asChild className="mt-4">
-                <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
-              </Button>
+        
+        {stats ? (
+             <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                 <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle>Attendance Rate</CardTitle>
+                        <CardDescription>Your overall attendance percentage across all subjects.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[250px] md:h-[300px]">
+                        <AttendanceChart attended={stats.attendedClasses} total={stats.totalClasses} />
+                    </CardContent>
+                 </Card>
+                 <div className="space-y-6">
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                           <CardTitle className="text-4xl font-bold">{stats.attendanceRate}%</CardTitle>
+                           <CardDescription>Overall Rate</CardDescription>
+                        </CardHeader>
+                    </Card>
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                           <CardTitle className="text-4xl font-bold">{stats.attendedClasses}</CardTitle>
+                           <CardDescription>Classes Attended</CardDescription>
+                        </CardHeader>
+                    </Card>
+                     <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                           <CardTitle className="text-4xl font-bold">{stats.missedClasses}</CardTitle>
+                           <CardDescription>Classes Missed</CardDescription>
+                        </CardHeader>
+                    </Card>
+                 </div>
             </div>
-          </div>
+        ) : (
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-1 text-center p-8">
+                <h3 className="text-2xl font-bold tracking-tight">
+                    No data to display
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    Please complete your profile so we can calculate your attendance.
+                </p>
+                <Button asChild className="mt-4">
+                    <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
+                </Button>
+                </div>
+            </div>
         )}
       </main>
     </div>

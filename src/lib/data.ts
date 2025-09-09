@@ -1,6 +1,7 @@
 
-import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, query, where, collectionGroup } from 'firebase/firestore';
 import { db } from './firebase';
+import { startOfDay, endOfDay } from 'date-fns';
 
 // Interface definitions remain the same
 export interface Student {
@@ -125,4 +126,14 @@ export const getStudentsByDepartment = async (department: string) => {
     const q = query(collection(db, 'students'), where('department', '==', department));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
+}
+
+// New function to get all attendance records for a student
+export const getAllStudentAttendanceRecords = async (studentId: string): Promise<AttendanceRecord[]> => {
+    const recordsQuery = query(
+        collectionGroup(db, 'records'),
+        where('studentId', '==', studentId)
+    );
+    const querySnapshot = await getDocs(recordsQuery);
+    return querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
 }
