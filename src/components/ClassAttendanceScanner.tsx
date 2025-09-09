@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Helper function to check if current time is within any of the class schedules in IST
 const isClassTime = (schedules: Schedule[]) => {
+  if (!schedules) return false;
   const timeZone = 'Asia/Kolkata';
   const now = toDate(new Date());
   const dayOfWeek = format(now, 'EEEE', { timeZone });
@@ -45,14 +46,6 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   
   // 1. Check if class is in session and if attendance is already marked
   useEffect(() => {
-    const checkTime = () => {
-      const isTime = isClassTime(classItem.schedules);
-      setIsWithinClassTime(isTime);
-      if (!isTime) setStatus('not_class_time');
-    };
-    checkTime();
-    const interval = setInterval(checkTime, 60000);
-
     const checkIfMarked = async () => {
         if (user) {
             const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
@@ -61,15 +54,37 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
                 setStatus('already_marked');
+                return true;
             }
         }
+        return false;
     };
-    if (isWithinClassTime) {
-      checkIfMarked();
-    }
+    
+    const checkTime = () => {
+      const isTime = isClassTime(classItem.schedules);
+      setIsWithinClassTime(isTime);
+      return isTime;
+    };
+
+    const runChecks = async () => {
+      const isMarked = await checkIfMarked();
+      if(isMarked) return;
+
+      const isTime = checkTime();
+       if (!isTime) {
+          setStatus('not_class_time');
+      } else {
+          // If it is class time, and not marked, reset to idle to allow scanning
+          setStatus('idle');
+      }
+    };
+    
+    runChecks();
+
+    const interval = setInterval(runChecks, 30000); // Check every 30 seconds
     
     return () => clearInterval(interval);
-  }, [classItem.schedules, classItem.id, user, isWithinClassTime]);
+  }, [classItem.schedules, classItem.id, user]);
 
   // 2. Handle camera permission and scanning logic
   useEffect(() => {
@@ -124,6 +139,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
       setHasCameraPermission(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play();
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -228,12 +244,15 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>Something went wrong. Please try again. <Button variant="link" className="p-0 h-auto" onClick={() => setStatus('idle')}>Retry</Button></AlertDescription></Alert>;
         case 'idle':
         default:
+            const isButtonDisabled = !isWithinClassTime || status !== 'idle';
             return (
                 <div className="flex flex-col items-center space-y-2">
-                    <Button onClick={startScan} disabled={!isWithinClassTime} size="lg">
+                    <Button onClick={startScan} disabled={isButtonDisabled} size="lg">
                         <Camera className="mr-2" /> Scan to Mark Attendance
                     </Button>
-                    {!isWithinClassTime && <p className="text-sm text-destructive">This class is not in session.</p>}
+                    {isButtonDisabled && status !== 'already_marked' && (
+                        <p className="text-sm text-destructive">This class is not in session.</p>
+                    )}
                 </div>
             )
     }
