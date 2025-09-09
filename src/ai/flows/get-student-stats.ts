@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Calculates and returns attendance statistics for a specific student.
@@ -10,6 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getCorrectStudentAttendanceRecords } from '@/lib/data';
+import { differenceInWeeks, parseISO } from 'date-fns';
 
 const GetStudentStatsInputSchema = z.object({
   studentId: z.string().describe('The ID of the student.'),
@@ -39,11 +41,16 @@ const getStudentStatsFlow = ai.defineFlow(
         const { records: attendanceRecords, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
 
         let totalClassesHeld = 0;
-        // This is a rough estimation. A more accurate system would track actual classes held.
-        // For now, we assume a 14-week semester for calculation if classes exist.
-        if (studentClasses.length > 0) {
+        
+        // A more accurate system to calculate total classes held up to today.
+        // We can assume a fixed start date for the current semester.
+        const semesterStartDate = parseISO('2024-07-15');
+        const today = new Date();
+        const weeksPassed = differenceInWeeks(today, semesterStartDate) + 1;
+
+        if (studentClasses.length > 0 && weeksPassed > 0) {
             studentClasses.forEach(c => {
-                totalClassesHeld += (c.schedules?.length || 0) * 14;
+                totalClassesHeld += (c.schedules?.length || 0) * weeksPassed;
             });
         }
         
