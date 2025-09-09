@@ -186,7 +186,11 @@ export default function AdminDashboard() {
                                         <TableCell>{c.subject}</TableCell>
                                         <TableCell>{c.semester}</TableCell>
                                         <TableCell>{c.teacherName}</TableCell>
-                                        <TableCell>{c.timeSlot.day}, {c.timeSlot.start} - {c.timeSlot.end}</TableCell>
+                                        <TableCell>
+                                          {c.schedules?.map((s, i) => (
+                                            <div key={i}>{s.day}, {s.startTime} - {s.endTime}</div>
+                                          ))}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
