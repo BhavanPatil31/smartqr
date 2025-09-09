@@ -24,12 +24,18 @@ const isClassTime = (schedules: Schedule[]) => {
   return schedules.some(schedule => {
     if (dayOfWeek !== schedule.day) return false;
 
-    const startTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${schedule.startTime}:00`;
-    const endTimeStr = `${format(now, 'yyyy-MM-dd', { timeZone })}T${schedule.endTime}:00`;
-    const startTime = toDate(startTimeStr, { timeZone });
-    const endTime = toDate(endTimeStr, { timeZone });
-
-    return now >= startTime && now <= endTime;
+    const todayStr = format(now, 'yyyy-MM-dd', { timeZone });
+    const startTimeStr = `${todayStr}T${schedule.startTime}:00`;
+    const endTimeStr = `${todayStr}T${schedule.endTime}:00`;
+    
+    try {
+        const startTime = toDate(startTimeStr, { timeZone });
+        const endTime = toDate(endTimeStr, { timeZone });
+        return now >= startTime && now <= endTime;
+    } catch (e) {
+        console.error("Error parsing date/time for schedule check:", e);
+        return false;
+    }
   });
 };
 
