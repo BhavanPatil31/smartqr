@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { User, LogOut, CheckSquare } from 'lucide-react';
-import type { StudentProfile, Class, AttendanceRecord } from '@/lib/data';
+import type { StudentProfile } from '@/lib/data';
 import { getStudentAttendanceStats } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AttendanceChart } from '@/components/AttendanceChart';
@@ -53,7 +53,7 @@ export default function StudentDashboard() {
           setProfile(studentProfile);
           
           if (studentProfile.department && studentProfile.semester) {
-            const attendanceStats = await getStudentAttendanceStats(user.uid, studentProfile.department, studentProfile.semester);
+            const attendanceStats = await getStudentAttendanceStats(user.uid);
             setStats(attendanceStats);
           } else {
             setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });

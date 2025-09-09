@@ -128,19 +128,30 @@ export const getStudentsByDepartment = async (department: string) => {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
 }
 
-// Corrected function to be used instead
-export const getCorrectStudentAttendanceRecords = async (studentId: string, studentClasses: Class[]): Promise<AttendanceRecord[]> => {
-    if (studentClasses.length === 0) return [];
+export const getCorrectStudentAttendanceRecords = async (studentId: string): Promise<{ records: AttendanceRecord[], studentClasses: Class[] }> => {
+    const studentDocRef = doc(db, 'students', studentId);
+    const studentDocSnap = await getDoc(studentDocRef);
+    if (!studentDocSnap.exists()) {
+        console.warn(`No profile found for student ${studentId}`);
+        return { records: [], studentClasses: [] };
+    }
+    const studentProfile = studentDocSnap.data() as StudentProfile;
+    const { department, semester } = studentProfile;
+
+    if (!department || !semester) {
+        return { records: [], studentClasses: [] };
+    }
+
+    const studentClasses = await getStudentClasses(department, semester);
+    if (studentClasses.length === 0) return { records: [], studentClasses: [] };
 
     let allRecords: AttendanceRecord[] = [];
 
     for (const cls of studentClasses) {
-        // Query each class's attendance subcollection for all dates
         const attendanceSubCollectionRef = collection(db, 'classes', cls.id, 'attendance');
         const dateDocs = await getDocs(attendanceSubCollectionRef);
 
         for (const dateDoc of dateDocs.docs) {
-            // For each date, query the 'records' subcollection for the specific student
             const recordsRef = collection(db, 'classes', cls.id, 'attendance', dateDoc.id, 'records');
             const studentRecordQuery = query(recordsRef, where('studentId', '==', studentId));
             const studentRecordsSnapshot = await getDocs(studentRecordQuery);
@@ -151,5 +162,5 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string, stud
         }
     }
 
-    return allRecords;
+    return { records: allRecords, studentClasses };
 };
