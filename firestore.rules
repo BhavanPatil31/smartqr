@@ -4,51 +4,77 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Deny all reads and writes by default
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Allow users to read/write their own profile data
-    match /students/{userId} {
-      allow read, update: if request.auth.uid == userId;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
-    match /teachers/{userId} {
-      allow read, update: if request.auth.uid == userId;
+
+    function getRoleData(role) {
+      return get(/databases/$(database)/documents/$(role)/$(request.auth.uid)).data;
     }
-    match /admins/{userId} {
-        allow read, update: if request.auth.uid == userId;
+
+    // Profile Rules
+    match /students/{studentId} {
+      allow read, write: if isAuthenticated() && isOwner(studentId);
+    }
+
+    match /teachers/{teacherId} {
+      allow read, write: if isAuthenticated() && isOwner(teacherId);
     }
     
-    // Rules for classes collection
+    match /admins/{adminId} {
+      allow read, write: if isAuthenticated() && isOwner(adminId);
+    }
+
+    // Class Rules
     match /classes/{classId} {
-        // Any authenticated user can view class details
-        allow get: if request.auth != null;
-        
-        // Only teachers can create classes
-        allow create: if request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-        
-        // Only the assigned teacher can update their own class
-        allow update: if request.auth.uid == resource.data.teacherId;
-        
-        // Allow authenticated users to list classes (queries are secured in the app code)
-        allow list: if request.auth != null;
-    }
-    
-    // Rules for attendance records
-    match /classes/{classId}/attendance/{date}/records/{studentId} {
-        // Students can only create their own attendance record
-        allow create: if request.auth.uid == studentId;
+      // Teachers can create classes for their own department
+      allow create: if isAuthenticated() && request.resource.data.teacherId == request.auth.uid;
+      
+      // Read access for class documents
+      allow read: if isAuthenticated() && 
+                    (
+                      // Student can read if their department and semester match
+                      (getRoleData('students').department == resource.data.department && getRoleData('students').semester == resource.data.semester) ||
+                      // Teacher can read if they own the class
+                      (resource.data.teacherId == request.auth.uid) ||
+                      // Admin can read if their department matches
+                      (getRoleData('admins').department == resource.data.department)
+                    );
 
-        // Teachers and Admins can read attendance records for classes in their department
-        allow get, list: if 
-            (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-            (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == get(/databases/$(database)/documents/classes/$(classId)).data.department);
-    }
-    
-    // Allow students to query their own attendance records across all classes
-    match /{path=**}/records/{studentId} {
-      allow read: if request.auth.uid == resource.data.studentId;
+      // Only the teacher who owns the class can update or delete it
+      allow update, delete: if isAuthenticated() && resource.data.teacherId == request.auth.uid;
+
+      // Rules for attendance subcollections
+      match /attendance/{date} {
+        // Teachers of the class and Admins of the department can list date documents
+        allow list, get: if isAuthenticated() &&
+                          (
+                            (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+                            (getRoleData('admins').department == get(/databases/$(database)/documents/classes/$(classId)).data.department)
+                          );
+        
+        // Rules for specific attendance records
+        match /records/{recordId} {
+          // A student can create their own attendance record
+          allow create: if isAuthenticated() && isOwner(recordId);
+          
+          // Read access for specific records
+          allow read, list: if isAuthenticated() &&
+                          (
+                            // Student can read their own record
+                            isOwner(recordId) ||
+                            // Teacher of the class can read any record in it
+                            (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+                            // Admin of the department can read any record
+                            (getRoleData('admins').department == get(/databases/$(database)/documents/classes/$(classId)).data.department)
+                          );
+        }
+      }
     }
   }
 }
