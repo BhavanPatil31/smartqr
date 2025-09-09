@@ -14,11 +14,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, LogOut, LayoutDashboard, CheckSquare } from 'lucide-react';
+import { ChevronLeft, Edit, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import type { StudentProfile } from '@/lib/data';
 import { Header } from '@/components/Header';
-import { Sidebar, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
@@ -108,7 +107,11 @@ export default function StudentProfilePage() {
   if (authLoading || loading || !profile) {
     return (
       <div className="min-h-screen bg-muted/40">
-        <Header left={<Skeleton className="h-9 w-9" />} />
+        <Header>
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-24" />
+            </div>
+        </Header>
         <main className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl space-y-6">
             <div className="flex items-center justify-between">
                 <Skeleton className="h-9 w-48" />
@@ -146,106 +149,91 @@ export default function StudentProfilePage() {
   }
 
   return (
-     <SidebarProvider>
-        <div className="min-h-screen w-full flex flex-col bg-muted/40">
-            <Sidebar>
-                <div className="flex-1 overflow-y-auto">
-                    <div className="flex flex-col gap-4 p-4">
-                        <Button asChild variant="outline" className="justify-start">
-                            <Link href="/student/dashboard"><LayoutDashboard className="mr-2 h-4 w-4"/>Dashboard</Link>
-                        </Button>
-                        <Button asChild variant="outline" className="justify-start">
-                            <Link href="/student/attendance"><CheckSquare className="mr-2 h-4 w-4"/> Mark Attendance</Link>
-                        </Button>
-                    </div>
-                </div>
-                <div className="p-4 mt-auto">
-                    <Button variant="outline" size="sm" onClick={handleLogout} className="w-full justify-start">
-                        <LogOut className="mr-2 h-4 w-4"/> Logout
-                    </Button>
-                </div>
-            </Sidebar>
-
-            <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-                <Header left={<SidebarTrigger />} />
-                <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-3xl font-bold">Your Profile</h1>
-                        <Button variant={isEditMode ? "default" : "outline"} onClick={() => {
-                            if (isEditMode) {
-                                handleSave();
-                            } else {
-                                setIsEditMode(true);
-                            }
-                        }} disabled={isSaving}>
-                            <Edit className="mr-2 h-4 w-4"/> {isEditMode ? (isSaving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
-                        </Button>
-                    </div>
-
-                    <Card className="gradient-card-1">
-                    <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
-                        <Avatar className="h-24 w-24">
-                        <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
-                            {profile.fullName?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                        </Avatar>
-                        <div className="text-center md:text-left">
-                            <p className="font-bold text-2xl">{profile.fullName}</p>
-                            <p className="text-muted-foreground">{profile.usn || 'No USN provided'}</p>
-                            <p className="text-sm text-muted-foreground">{profile.email}</p>
-                        </div>
-                    </CardContent>
-                    </Card>
-
-                    <Card className="bg-card/80 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle>Academic Information</CardTitle>
-                        <CardDescription>View and edit your personal and academic details.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="fullName">Full Name</Label>
-                            <Input id="fullName" value={profile.fullName} onChange={handleInputChange} disabled={!isEditMode} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="usn">USN</Label>
-                            <Input id="usn" value={profile.usn} onChange={handleInputChange} disabled={!isEditMode} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phoneNumber">Phone Number</Label>
-                            <Input id="phoneNumber" type="tel" value={profile.phoneNumber} onChange={handleInputChange} disabled={!isEditMode} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" type="email" value={profile.email} disabled />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="semester">Semester</Label>
-                            <Select name="semester" value={profile.semester} onValueChange={(value) => handleSelectChange('semester', value)} disabled={!isEditMode}>
-                                <SelectTrigger><SelectValue placeholder="Select Semester" /></SelectTrigger>
-                                <SelectContent>
-                                {SEMESTERS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="department">Department</Label>
-                            <Select name="department" value={profile.department} onValueChange={(value) => handleSelectChange('department', value)} disabled={!isEditMode}>
-                                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                                <SelectContent>
-                                {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        </div>
-                    </CardContent>
-                    </Card>
-                </main>
+    <div className="min-h-screen bg-muted/40">
+      <Header>
+        <Button onClick={handleLogout} variant="outline" size="sm">
+            <LogOut className="mr-2 h-4 w-4"/> Logout
+        </Button>
+      </Header>
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl space-y-6">
+        <div className="flex items-center justify-between">
+            <div>
+                 <Button asChild variant="ghost" className="-ml-4 mb-2">
+                    <Link href="/student/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
+                </Button>
+                <h1 className="text-3xl font-bold">Your Profile</h1>
             </div>
+            <Button variant={isEditMode ? "default" : "outline"} onClick={() => {
+                if (isEditMode) {
+                    handleSave();
+                } else {
+                    setIsEditMode(true);
+                }
+            }} disabled={isSaving}>
+                <Edit className="mr-2 h-4 w-4"/> {isEditMode ? (isSaving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+            </Button>
         </div>
-    </SidebarProvider>
+
+        <Card className="gradient-card-1">
+          <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
+            <Avatar className="h-24 w-24">
+              <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
+                {profile.fullName?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-center md:text-left">
+                <p className="font-bold text-2xl">{profile.fullName}</p>
+                <p className="text-muted-foreground">{profile.usn || 'No USN provided'}</p>
+                <p className="text-sm text-muted-foreground">{profile.email}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Academic Information</CardTitle>
+            <CardDescription>View and edit your personal and academic details.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input id="fullName" value={profile.fullName} onChange={handleInputChange} disabled={!isEditMode} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="usn">USN</Label>
+                <Input id="usn" value={profile.usn} onChange={handleInputChange} disabled={!isEditMode} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input id="phoneNumber" type="tel" value={profile.phoneNumber} onChange={handleInputChange} disabled={!isEditMode} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input id="email" type="email" value={profile.email} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="semester">Semester</Label>
+                <Select name="semester" value={profile.semester} onValueChange={(value) => handleSelectChange('semester', value)} disabled={!isEditMode}>
+                    <SelectTrigger><SelectValue placeholder="Select Semester" /></SelectTrigger>
+                    <SelectContent>
+                    {SEMESTERS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Select name="department" value={profile.department} onValueChange={(value) => handleSelectChange('department', value)} disabled={!isEditMode}>
+                    <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                    <SelectContent>
+                    {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
   );
 }
-
-    

@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { User, PlusCircle, LogOut } from 'lucide-react';
 import type { Class } from '@/lib/data';
-import { Sidebar, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 export default function TeacherDashboard() {
   const [user, loading] = useAuthState(auth);
@@ -53,7 +52,12 @@ export default function TeacherDashboard() {
   if (loading || isLoadingClasses || !user) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Header left={<Skeleton className="h-9 w-9" />} />
+        <Header>
+           <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+          </div>
+        </Header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <Skeleton className="h-8 w-48 mb-4" />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -65,68 +69,54 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Sidebar>
-            <div className="flex-1 overflow-y-auto">
-                 <div className="flex flex-col gap-4 p-4">
-                    <Button asChild variant="outline" className="justify-start">
-                        <Link href="/teacher/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-                    </Button>
-                 </div>
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <Header>
+          <Button asChild variant="outline" size="sm">
+              <Link href="/teacher/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+          </Button>
+          <Button onClick={handleLogout} variant="outline" size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+          </Button>
+      </Header>
+      <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-bold text-2xl">Your Classes</h1>
+              <p className="text-muted-foreground">Manage your existing classes or create a new one.</p>
             </div>
-            <div className="p-4 mt-auto">
-                <Button onClick={handleLogout} variant="outline" size="sm" className="w-full justify-start">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </Button>
-            </div>
-        </Sidebar>
-
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <Header left={<SidebarTrigger />} />
-            <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                    <h1 className="font-bold text-2xl">Your Classes</h1>
-                    <p className="text-muted-foreground">Manage your existing classes or create a new one.</p>
-                    </div>
-                    <Button asChild>
-                        <Link href="/teacher/create-class">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New Class
-                        </Link>
-                    </Button>
-                </div>
-                {classes.length > 0 ? (
-                <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {classes.map((classItem) => (
-                    <ClassCard key={classItem.id} classItem={classItem} userRole="teacher" />
-                    ))}
-                </div>
-                ) : (
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm min-h-[400px]">
-                    <div className="flex flex-col items-center gap-2 text-center p-8">
-                    <h3 className="text-2xl font-bold tracking-tight">
-                        No classes created yet
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                        Get started by creating your first class.
-                    </p>
-                    <Button asChild className="mt-4">
-                        <Link href="/teacher/create-class">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create Class
-                        </Link>
-                    </Button>
-                    </div>
-                </div>
-                )}
-            </main>
+            <Button asChild>
+                <Link href="/teacher/create-class">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create New Class
+                </Link>
+            </Button>
         </div>
-      </div>
-    </SidebarProvider>
+        {classes.length > 0 ? (
+          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {classes.map((classItem) => (
+              <ClassCard key={classItem.id} classItem={classItem} userRole="teacher" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm min-h-[400px]">
+            <div className="flex flex-col items-center gap-2 text-center p-8">
+              <h3 className="text-2xl font-bold tracking-tight">
+                No classes created yet
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Get started by creating your first class.
+              </p>
+              <Button asChild className="mt-4">
+                  <Link href="/teacher/create-class">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Create Class
+                  </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
-
-    

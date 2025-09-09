@@ -15,7 +15,6 @@ import type { StudentProfile } from '@/lib/data';
 import { getStudentAttendanceStats } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AttendanceChart } from '@/components/AttendanceChart';
-import { Sidebar, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 interface AttendanceStats {
   totalClasses: number;
@@ -89,7 +88,13 @@ export default function StudentDashboard() {
   if (loading || isLoadingData) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Header left={<Skeleton className="h-9 w-9" />} />
+        <Header>
+           <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-32" />
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+          </div>
+        </Header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <div className="flex items-center justify-between">
             <div className='space-y-2'>
@@ -107,96 +112,83 @@ export default function StudentDashboard() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Sidebar>
-            <div className="flex-1 overflow-y-auto">
-                 <div className="flex flex-col gap-4 p-4">
-                    <Button asChild variant="default" className="justify-start">
-                        <Link href="/student/attendance"><CheckSquare className="mr-2 h-4 w-4" /> Mark Attendance</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="justify-start">
-                        <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-                    </Button>
-                 </div>
-            </div>
-            <div className="p-4 mt-auto">
-                <Button onClick={handleLogout} variant="outline" size="sm" className="w-full justify-start">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </Button>
-            </div>
-        </Sidebar>
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-            <Header left={<SidebarTrigger />} />
-            <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
-                  <p className="text-muted-foreground">Here is your attendance overview.</p>
-                </div>
-              </div>
-              
-              {isProfileComplete && stats ? (
-                  <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
-                      <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
-                          <CardHeader>
-                              <CardTitle>Attendance Rate</CardTitle>
-                              <CardDescription>
-                                {stats.totalClasses > 0 
-                                  ? "Your overall attendance percentage across all subjects."
-                                  : "No classes have been held for your semester yet."}
-                              </CardDescription>
-                          </CardHeader>
-                          <CardContent className="h-[250px] md:h-[300px]">
-                              <AttendanceChart attended={stats.attendedClasses} total={stats.totalClasses} />
-                          </CardContent>
-                      </Card>
-                      <div className="space-y-6">
-                          <Card className="bg-card/50 backdrop-blur-sm">
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-4xl font-bold">{stats.attendanceRate}%</CardTitle>
-                                <CardDescription>Overall Rate</CardDescription>
-                              </CardHeader>
-                          </Card>
-                          <Card className="bg-card/50 backdrop-blur-sm">
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-4xl font-bold">{stats.attendedClasses}</CardTitle>
-                                <CardDescription>Classes Attended</CardDescription>
-                              </CardHeader>
-                          </Card>
-                          <Card className="bg-card/50 backdrop-blur-sm">
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-4xl font-bold">{stats.missedClasses}</CardTitle>
-                                <CardDescription>Classes Missed</CardDescription>
-                              </CardHeader>
-                          </Card>
-                      </div>
-                  </div>
-              ) : (
-                  <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm min-h-[400px]">
-                      <div className="flex flex-col items-center gap-1 text-center p-8">
-                      <h3 className="text-2xl font-bold tracking-tight">
-                          {isProfileComplete ? "No Data Available" : "Complete Your Profile"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                          {isProfileComplete 
-                              ? "There is no attendance data to display for your classes yet."
-                              : "Please provide your department and semester to view your attendance."}
-                      </p>
-                      {!isProfileComplete && (
-                          <Button asChild className="mt-4">
-                              <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
-                          </Button>
-                      )}
-                      </div>
-                  </div>
-              )}
-            </main>
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <Header>
+          <Button asChild variant="default" size="sm">
+              <Link href="/student/attendance"><CheckSquare className="mr-2 h-4 w-4" /> Mark Attendance</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+              <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+          </Button>
+          <Button onClick={handleLogout} variant="outline" size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+          </Button>
+      </Header>
+      <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
+            <p className="text-muted-foreground">Here is your attendance overview.</p>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+        
+        {isProfileComplete && stats ? (
+            <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle>Attendance Rate</CardTitle>
+                        <CardDescription>
+                          {stats.totalClasses > 0 
+                            ? "Your overall attendance percentage across all subjects."
+                            : "No classes have been held for your semester yet."}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[250px] md:h-[300px]">
+                        <AttendanceChart attended={stats.attendedClasses} total={stats.totalClasses} />
+                    </CardContent>
+                </Card>
+                <div className="space-y-6">
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-4xl font-bold">{stats.attendanceRate}%</CardTitle>
+                          <CardDescription>Overall Rate</CardDescription>
+                        </CardHeader>
+                    </Card>
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-4xl font-bold">{stats.attendedClasses}</CardTitle>
+                          <CardDescription>Classes Attended</CardDescription>
+                        </CardHeader>
+                    </Card>
+                    <Card className="bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-4xl font-bold">{stats.missedClasses}</CardTitle>
+                          <CardDescription>Classes Missed</CardDescription>
+                        </CardHeader>
+                    </Card>
+                </div>
+            </div>
+        ) : (
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm min-h-[400px]">
+                <div className="flex flex-col items-center gap-1 text-center p-8">
+                <h3 className="text-2xl font-bold tracking-tight">
+                    {isProfileComplete ? "No Data Available" : "Complete Your Profile"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    {isProfileComplete 
+                        ? "There is no attendance data to display for your classes yet."
+                        : "Please provide your department and semester to view your attendance."}
+                </p>
+                {!isProfileComplete && (
+                    <Button asChild className="mt-4">
+                        <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
+                    </Button>
+                )}
+                </div>
+            </div>
+        )}
+      </main>
+    </div>
   );
 }
-
-    
