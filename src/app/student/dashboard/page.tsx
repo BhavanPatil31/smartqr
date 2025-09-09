@@ -56,7 +56,8 @@ export default function StudentDashboard() {
             const attendanceStats = await getStudentAttendanceStats(user.uid);
             setStats(attendanceStats);
           } else {
-            setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });
+            // If profile is incomplete, set stats to null to show profile completion message
+            setStats(null);
           }
         } else {
             setProfile(null);
@@ -64,6 +65,8 @@ export default function StudentDashboard() {
         }
       } catch (error) {
           console.error("Failed to fetch student data:", error);
+          // Set stats to a default state on error to avoid showing wrong message
+          setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });
       } finally {
         setIsLoadingData(false);
       }
@@ -129,12 +132,16 @@ export default function StudentDashboard() {
           </div>
         </div>
         
-        {stats ? (
+        {stats !== null ? (
              <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
                  <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
                     <CardHeader>
                         <CardTitle>Attendance Rate</CardTitle>
-                        <CardDescription>Your overall attendance percentage across all subjects.</CardDescription>
+                        <CardDescription>
+                          {stats.totalClasses > 0 
+                            ? "Your overall attendance percentage across all subjects."
+                            : "No classes have been held for your semester yet."}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="h-[250px] md:h-[300px]">
                         <AttendanceChart attended={stats.attendedClasses} total={stats.totalClasses} />
@@ -165,10 +172,10 @@ export default function StudentDashboard() {
             <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-1 text-center p-8">
                 <h3 className="text-2xl font-bold tracking-tight">
-                    No data to display
+                    Complete Your Profile
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    Please complete your profile so we can calculate your attendance.
+                    Please provide your department and semester so we can calculate your attendance.
                 </p>
                 <Button asChild className="mt-4">
                     <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>

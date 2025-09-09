@@ -40,12 +40,16 @@ export async function getStudentAttendanceStats(studentId: string) {
         const { records: attendanceRecords, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
 
         let totalClassesHeld = 0;
-        studentClasses.forEach(c => {
-            // Assume 14 weeks in a semester
-            totalClassesHeld += (c.schedules?.length || 0) * 14;
-        });
+        // This is a rough estimation. A more accurate system would track actual classes held.
+        // For now, we assume a 14-week semester for calculation if classes exist.
+        if (studentClasses.length > 0) {
+            studentClasses.forEach(c => {
+                totalClassesHeld += (c.schedules?.length || 0) * 14;
+            });
+        }
         
         const attendedClasses = attendanceRecords.length;
+        // Base total classes on the higher of estimated held classes or actual attended classes.
         const totalClasses = Math.max(totalClassesHeld, attendedClasses);
         const missedClasses = Math.max(0, totalClasses - attendedClasses);
         const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
