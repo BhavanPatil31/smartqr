@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { User, LogOut, LayoutDashboard } from 'lucide-react';
 import type { StudentProfile, Class } from '@/lib/data';
+import { Sidebar, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 export default function StudentAttendancePage() {
   const [user, loading] = useAuthState(auth);
@@ -100,50 +101,61 @@ export default function StudentAttendancePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
-      <Header>
-         <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-                <Link href="/student/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-                <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-            </Button>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
-         </div>
-      </Header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-2xl">Mark Attendance</h1>
-            <p className="text-muted-foreground">Select a class to scan the QR code and mark your attendance.</p>
-          </div>
-        </div>
-         {classes.length > 0 ? (
-          <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {classes.map((classItem) => (
-              <ClassCard key={classItem.id} classItem={classItem} userRole="student" />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-1 text-center p-8">
-              <h3 className="text-2xl font-bold tracking-tight">
-                No classes found
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Please complete your profile or check if classes have been assigned.
-              </p>
-               <Button asChild className="mt-4">
-                <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
-              </Button>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+        <Sidebar>
+            <div className="flex-1 overflow-y-auto">
+                 <div className="flex flex-col gap-4 p-4">
+                    <Button asChild variant="outline" className="justify-start">
+                        <Link href="/student/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="justify-start">
+                        <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+                    </Button>
+                 </div>
+            </div>
+            <div className="p-4 mt-auto">
+                <Button onClick={handleLogout} variant="outline" size="sm" className="w-full justify-start">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+            </div>
+        </Sidebar>
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <Header left={<SidebarTrigger />} />
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-bold text-2xl">Mark Attendance</h1>
+              <p className="text-muted-foreground">Select a class to scan the QR code and mark your attendance.</p>
             </div>
           </div>
-        )}
-      </main>
-    </div>
+          {classes.length > 0 ? (
+            <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {classes.map((classItem) => (
+                <ClassCard key={classItem.id} classItem={classItem} userRole="student" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-1 text-center p-8">
+                <h3 className="text-2xl font-bold tracking-tight">
+                  No classes found
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Please complete your profile or check if classes have been assigned.
+                </p>
+                <Button asChild className="mt-4">
+                  <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Go to Profile</Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
+
+    
