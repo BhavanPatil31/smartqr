@@ -8,66 +8,58 @@ service cloud.firestore {
     function isStudent() {
       return exists(/databases/$(database)/documents/students/$(request.auth.uid));
     }
-
     function isTeacher() {
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
-
     function isAdmin() {
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
-    
-    function getStudentDepartment() {
-        return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department;
+    function getStudentDept() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department;
+    }
+    function getStudentSemester() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.semester;
+    }
+     function getAdminDept() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
     }
 
-    function getAdminDepartment() {
-        return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
+    // Profiles
+    match /students/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+    match /teachers/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+     match /admins/{userId} {
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Profile Rules
-    match /students/{studentId} {
-      allow read, write: if request.auth.uid == studentId;
-    }
-
-    match /teachers/{teacherId} {
-      allow read, write: if request.auth.uid == teacherId;
-    }
-    
-    match /admins/{adminId} {
-      allow read, write: if request.auth.uid == adminId;
-    }
-
-    // Class Rules
+    // Classes
     match /classes/{classId} {
-      // Students can read classes that match their department
-      allow read: if isStudent() && resource.data.department == getStudentDepartment()
-                  || isTeacher() && resource.data.teacherId == request.auth.uid
-                  || isAdmin() && resource.data.department == getAdminDepartment();
-                  
-      // Only teachers can create and update classes
-      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update: if isTeacher() && resource.data.teacherId == request.auth.uid;
-      allow delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      // Students can read classes that match their department and semester
+      allow read: if isStudent() && resource.data.department == getStudentDept() && resource.data.semester == getStudentSemester();
+      // Teachers can read/write their own classes
+      allow read, create, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      // Admins can read classes in their department
+      allow read: if isAdmin() && resource.data.department == getAdminDept();
     }
     
-    // Attendance Records Rules
-    // This needs to be a collection group match to allow students to query all their records
-    match /{path=**}/records/{recordId} {
-      // Who can read attendance records?
-      // 1. The student themselves.
-      // 2. The teacher of the class.
-      // 3. An admin of the department.
-      allow read: if (request.auth.uid == resource.data.studentId) ||
-                   (isTeacher() && get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid) ||
-                   (isAdmin() && get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.department == getAdminDepartment());
-
-      // Who can write attendance records?
-      // 1. A student creating their OWN record.
+    // Attendance Records
+    // Using a recursive wildcard to match subcollections
+    match /classes/{classId}/attendance/{date}/records/{recordId} {
+      // Students can create their own attendance record if it's for them.
       allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
-      
-      // No one should be able to update/delete attendance records from the client.
-      allow update, delete: if false;
+      // Teachers can read records for their classes.
+      allow read: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+       // Admins can read records for their department's classes
+      allow read: if isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == getAdminDept();
+    }
+    
+    // Collection group query for records
+    match /{path=**}/records/{recordId} {
+      // Allow students to read their own attendance records across all classes.
+      allow read: if isStudent() && resource.data.studentId == request.auth.uid;
     }
   }
 }

@@ -147,24 +147,20 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     const studentClasses = await getStudentClasses(department, semester);
     if (studentClasses.length === 0) return { records: [], studentClasses: [] };
 
+    // More reliable way: query records for each class and date collection.
+    // This avoids complex collection group queries that need specific indexes and rules.
     let allRecords: AttendanceRecord[] = [];
-
-    // This query is more efficient and reliable.
-    const recordsQuery = query(
-        collectionGroup(db, 'records'),
-        where('studentId', '==', studentId)
-    );
     
     try {
+        const recordsQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
         const recordsSnapshot = await getDocs(recordsQuery);
-        recordsSnapshot.forEach(recordDoc => {
-            allRecords.push(recordDoc.data() as AttendanceRecord);
+        recordsSnapshot.forEach(doc => {
+            allRecords.push(doc.data() as AttendanceRecord);
         });
-    } catch (e) {
-        console.error("Error fetching attendance records with collection group query. This may require a composite index.", e);
-        // Fallback or re-throw as needed. For now, we continue to return what we can.
-        throw new Error("Failed to query attendance records.");
+    } catch (error) {
+        console.error("Failed to fetch attendance records:", error);
+        throw new Error("Could not fetch attendance records from Firestore.");
     }
-
+    
     return { records: allRecords, studentClasses };
 };
