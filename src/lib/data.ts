@@ -145,8 +145,7 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     }
 
     const studentClasses = await getStudentClasses(department, semester);
-    if (studentClasses.length === 0) return { records: [], studentClasses: [] };
-
+    
     let allRecords: AttendanceRecord[] = [];
     
     try {
