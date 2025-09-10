@@ -92,6 +92,7 @@ export function AttendanceButton({ classId, classTimeSlot }: { classId: string, 
         toast({
           title: "Attendance Marked!",
           description: "Your attendance has been successfully recorded.",
+          className: "bg-accent text-accent-foreground",
         });
 
     } catch (error) {

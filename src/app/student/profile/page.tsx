@@ -89,7 +89,7 @@ export default function StudentProfilePage() {
     setIsSaving(true);
     try {
       await setDoc(doc(db, 'students', user.uid), profile);
-      toast({ title: 'Success', description: 'Profile updated successfully!' });
+      toast({ title: 'Success', description: 'Profile updated successfully!', className: 'bg-accent text-accent-foreground' });
       setIsEditMode(false);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update profile.', variant: 'destructive' });
@@ -106,7 +106,7 @@ export default function StudentProfilePage() {
   
   if (authLoading || loading || !profile) {
     return (
-      <div className="min-h-screen bg-muted/40">
+      <div className="min-h-screen">
         <Header>
             <div className="flex items-center gap-2">
                 <Skeleton className="h-9 w-24" />
@@ -149,7 +149,7 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen">
       <Header>
         <Button onClick={handleLogout} variant="outline" size="sm">
             <LogOut className="mr-2 h-4 w-4"/> Logout
@@ -174,8 +174,8 @@ export default function StudentProfilePage() {
             </Button>
         </div>
 
-        <Card className="gradient-card-1">
-          <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
+        <Card className="rounded-xl overflow-hidden">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6 bg-card/80 backdrop-blur-sm">
             <Avatar className="h-24 w-24">
               <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
                 {profile.fullName?.charAt(0).toUpperCase()}
@@ -189,7 +189,7 @@ export default function StudentProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/80 backdrop-blur-sm">
+        <Card className="rounded-xl bg-card/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Academic Information</CardTitle>
             <CardDescription>View and edit your personal and academic details.</CardDescription>

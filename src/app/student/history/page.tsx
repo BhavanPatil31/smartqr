@@ -81,7 +81,7 @@ export default function StudentHistoryPage() {
 
     if (loading || isLoading) {
         return (
-            <div className="flex min-h-screen w-full flex-col bg-muted/40">
+            <div className="flex min-h-screen w-full flex-col">
                 <Header />
                 <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                     <Skeleton className="h-8 w-48" />
@@ -107,7 +107,7 @@ export default function StudentHistoryPage() {
     }
 
     return (
-        <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <div className="flex min-h-screen w-full flex-col">
             <Header />
             <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                 <div>
@@ -117,7 +117,7 @@ export default function StudentHistoryPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Your Attendance History</h1>
                 </div>
 
-                <Card>
+                <Card className="rounded-xl bg-card/80 backdrop-blur-sm">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <BarChart className="h-5 w-5 text-primary" />
@@ -134,7 +134,7 @@ export default function StudentHistoryPage() {
                     </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="rounded-xl bg-card/80 backdrop-blur-sm">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <Filter className="h-5 w-5 text-primary" />
@@ -170,7 +170,7 @@ export default function StudentHistoryPage() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-xl bg-card/80 backdrop-blur-sm">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <CalendarIcon className="h-5 w-5 text-primary" />

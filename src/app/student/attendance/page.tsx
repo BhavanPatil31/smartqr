@@ -74,7 +74,7 @@ export default function StudentAttendancePage() {
 
   if (loading || isLoadingClasses) {
     return (
-      <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+      <div className="flex min-h-screen w-full flex-col">
         <Header>
           <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-32" />
@@ -91,7 +91,7 @@ export default function StudentAttendancePage() {
           </div>
           <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-48 w-full" />
+              <Skeleton key={i} className="h-48 w-full rounded-xl" />
             ))}
           </div>
         </main>
@@ -100,12 +100,12 @@ export default function StudentAttendancePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+    <div className="flex min-h-screen w-full flex-col">
       <Header>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="ghost" size="sm">
               <Link href="/student/dashboard">Dashboard</Link>
           </Button>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="ghost" size="sm">
               <Link href="/student/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
           </Button>
           <Button onClick={handleLogout} variant="outline" size="sm">
@@ -116,8 +116,8 @@ export default function StudentAttendancePage() {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-2xl">Mark Attendance</h1>
-            <p className="text-muted-foreground">Select a class to scan the QR code and mark your attendance.</p>
+            <h1 className="font-bold text-3xl">Mark Attendance</h1>
+            <p className="text-muted-foreground mt-1">Select a class to scan the QR code and mark your attendance.</p>
           </div>
         </div>
         {classes.length > 0 ? (
@@ -127,7 +127,7 @@ export default function StudentAttendancePage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm">
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed shadow-sm mt-12 bg-card/50">
             <div className="flex flex-col items-center gap-1 text-center p-8">
               <h3 className="text-2xl font-bold tracking-tight">
                 No classes found
