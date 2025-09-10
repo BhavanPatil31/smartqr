@@ -25,9 +25,20 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    function isEnrolledInClass(classDoc) {
-      let studentProfile = get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
-      return classDoc.department == studentProfile.department && classDoc.semester == studentProfile.semester;
+    function getStudentDept() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department;
+    }
+    
+    function getStudentSemester() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.semester;
+    }
+    
+    function getAdminDept() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
+    }
+    
+    function getClass(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId));
     }
 
     // Profile Rules
@@ -41,33 +52,35 @@ service cloud.firestore {
       allow read, write: if isOwner(adminId);
     }
 
-    // Class and Attendance Rules
+    // Class Rules
     match /classes/{classId} {
-      // Students can read classes they are enrolled in.
-      allow read: if isStudent() && isEnrolledInClass(get(/databases/$(database)/documents/classes/$(classId)).data);
+      // Students can read classes in their department and semester
+      allow read: if isStudent() && resource.data.department == getStudentDept() && resource.data.semester == getStudentSemester();
       
-      // Teachers can create classes and manage their own.
+      // Teachers can create classes and read/update/delete their own classes
       allow create: if isTeacher();
       allow read, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
       
-      // Admins can read classes in their department.
-      allow read: if isAdmin() && resource.data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
+      // Admins can read classes in their department
+      allow read: if isAdmin() && resource.data.department == getAdminDept();
+    }
 
-      // Attendance sub-collection rules
-      match /attendance/{date}/records/{recordId} {
-        // A student can create their own attendance record if they are enrolled.
-        allow create: if isStudent() && 
-                        isOwner(request.resource.data.studentId) &&
-                        isEnrolledInClass(get(/databases/$(database)/documents/classes/$(classId)).data);
-        
-        // A student can read their own attendance records.
-        allow read: if isStudent() && isOwner(recordId);
+    // Attendance Record Rules
+    // This uses a collection group query, which requires a specific rule structure.
+    match /{path=**}/records/{recordId} {
+      // Allow read access for a collection group query if the request is for the user's own records.
+      allow read: if request.auth.uid == resource.data.studentId;
+      
+      // A student can create their own attendance record if they are enrolled in the class.
+      allow create: if isStudent() &&
+                      request.auth.uid == request.resource.data.studentId &&
+                      getClass(path[1]).data.department == getStudentDept() &&
+                      getClass(path[1]).data.semester == getStudentSemester();
 
-        // A teacher of the class can read all records for that class.
-        // Admins of the department can also read the records.
-        allow read: if (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-                      (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department);
-      }
+      // A teacher of a class can read all records for that class.
+      // Admins of the department can also read the records.
+      allow read: if (isTeacher() && getClass(path[1]).data.teacherId == request.auth.uid) ||
+                    (isAdmin() && getClass(path[1]).data.department == getAdminDept());
     }
   }
 }
