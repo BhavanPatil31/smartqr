@@ -147,16 +147,22 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
 
     let allRecords: AttendanceRecord[] = [];
 
-    // This query is more efficient than iterating through every class
+    // This query is more efficient and reliable than a collection group query without a specific index.
     const recordsQuery = query(
         collectionGroup(db, 'records'),
         where('studentId', '==', studentId)
     );
-    const recordsSnapshot = await getDocs(recordsQuery);
     
-    recordsSnapshot.forEach(recordDoc => {
-        allRecords.push(recordDoc.data() as AttendanceRecord);
-    });
+    try {
+        const recordsSnapshot = await getDocs(recordsQuery);
+        recordsSnapshot.forEach(recordDoc => {
+            allRecords.push(recordDoc.data() as AttendanceRecord);
+        });
+    } catch (e) {
+        console.error("Error fetching attendance records with collection group query. This may require a composite index.", e);
+        // Fallback or re-throw as needed. For now, we continue to return what we can.
+        throw new Error("Failed to query attendance records.");
+    }
 
     return { records: allRecords, studentClasses };
 };
