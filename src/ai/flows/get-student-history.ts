@@ -10,8 +10,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getStudentClasses, getCorrectStudentAttendanceRecords } from '@/lib/data';
-import { eachDayOfInterval, format, getDay, isWithinInterval, parseISO, startOfDay, startOfWeek } from 'date-fns';
+import { getCorrectStudentAttendanceRecords } from '@/lib/data';
+import { eachDayOfInterval, format, getDay, isWithinInterval, parseISO, startOfDay, startOfWeek, toDate } from 'date-fns';
 import type { AttendanceRecord, Class } from '@/lib/data';
 
 const GetStudentHistoryInputSchema = z.object({
@@ -71,83 +71,64 @@ const getStudentHistoryFlow = ai.defineFlow(
         return { subjectStats: [], records: [] };
     }
     
-    // Create a quick lookup for attendance records
+    // Create a quick lookup for attendance records: key is "classId-date"
     const attendanceMap = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach(rec => {
         const dateStr = format(new Date(rec.timestamp), 'yyyy-MM-dd');
-        attendanceMap.set(`${rec.usn}-${dateStr}`, rec);
+        attendanceMap.set(`${rec.classId}-${dateStr}`, rec);
     });
 
     studentClasses.forEach(c => {
+        // Initialize stats for each subject
         subjectStats[c.subject] = { attended: 0, total: 0 };
 
-        c.schedules.forEach(schedule => {
-            const classDay = DAY_MAP[schedule.day];
-            if (classDay === undefined) return;
-
-            const daysInSemester = eachDayOfInterval({
-                start: semesterStartDate,
-                end: today
-            });
+        const daysInSemesterSoFar = eachDayOfInterval({
+            start: semesterStartDate,
+            end: today
+        });
+        
+        // Find all days this class was scheduled to happen
+        daysInSemesterSoFar.forEach(day => {
+            const dayOfWeek = getDay(day); // 0 for Sunday, 1 for Monday, etc.
             
-            daysInSemester.forEach(day => {
-                if (getDay(day) === classDay) {
-                    subjectStats[c.subject].total++;
-                    
-                    const dateStr = format(day, 'yyyy-MM-dd');
-                    const attendanceKey = `${c.id}-${dateStr}`; // Using classId + date to uniquely identify a session
-                    
-                    // A better way to find if the student attended THIS specific class on THIS day.
-                    const attendedRecord = attendanceRecords.find(r => {
-                       const recordDateStr = format(new Date(r.timestamp), 'yyyy-MM-dd');
-                       // We need to know which class this record belongs to. This requires a schema change.
-                       // For now, we will assume one class per day for a student for a subject. This is a limitation.
-                       return recordDateStr === dateStr && subjectStats[c.subject];
-                    });
+            const relevantSchedules = c.schedules.filter(schedule => DAY_MAP[schedule.day] === dayOfWeek);
 
-                    let status: 'Present' | 'Absent' = 'Absent';
-                    let markedAt: number | undefined = undefined;
+            relevantSchedules.forEach(schedule => {
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const attendanceKey = `${c.id}-${dateStr}`;
 
-                    if (attendedRecord) {
-                         // This logic is imperfect without classId in the attendance record.
-                         // We are checking if ANY class was attended on this day and crediting it.
-                         status = 'Present';
-                         markedAt = attendedRecord.timestamp;
-                         subjectStats[c.subject].attended++;
-                    }
-                    
-                    historyRecords.push({
-                        subject: c.subject,
-                        teacherName: c.teacherName,
-                        date: dateStr,
-                        startTime: schedule.startTime,
-                        endTime: schedule.endTime,
-                        status,
-                        markedAt,
-                    });
+                const attendedRecord = attendanceMap.get(attendanceKey);
+
+                let status: 'Present' | 'Absent' = 'Absent';
+                let markedAt: number | undefined = undefined;
+
+                subjectStats[c.subject].total++;
+
+                if (attendedRecord) {
+                    status = 'Present';
+                    markedAt = attendedRecord.timestamp;
+                    subjectStats[c.subject].attended++;
                 }
+                
+                historyRecords.push({
+                    subject: c.subject,
+                    teacherName: c.teacherName,
+                    date: dateStr,
+                    startTime: schedule.startTime,
+                    endTime: schedule.endTime,
+                    status,
+                    markedAt,
+                });
             });
         });
     });
-
-    // We have to correct the attendance count now based on the generated records.
-    const finalSubjectStats: { [subject: string]: { attended: number; total: number } } = {};
-    historyRecords.forEach(rec => {
-        if (!finalSubjectStats[rec.subject]) {
-            finalSubjectStats[rec.subject] = { attended: 0, total: 0 };
-        }
-        finalSubjectStats[rec.subject].total++;
-        if (rec.status === 'Present') {
-            finalSubjectStats[rec.subject].attended++;
-        }
-    });
-
+    
     return {
-        subjectStats: Object.entries(finalSubjectStats).map(([subject, counts]) => ({
+        subjectStats: Object.entries(subjectStats).map(([subject, counts]) => ({
             subject,
             ...counts
         })),
-        records: historyRecords,
+        records: historyRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     };
   }
 );

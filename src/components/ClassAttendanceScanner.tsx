@@ -96,6 +96,8 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             usn: studentProfile.usn,
             timestamp: new Date().getTime(),
             deviceInfo: navigator.userAgent,
+            classId: classItem.id, // Add classId to the record
+            subject: classItem.subject, // Add subject to the record
         });
 
         setStatus('success');
@@ -113,7 +115,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
           variant: "destructive"
         });
     }
-  }, [user, classItem.id, toast, stopScan]);
+  }, [user, classItem.id, classItem.subject, toast, stopScan]);
 
 
   // Main check effect

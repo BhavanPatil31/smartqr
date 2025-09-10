@@ -65,6 +65,8 @@ export interface AttendanceRecord {
     usn: string;
     timestamp: number;
     deviceInfo: string;
+    classId: string; // Crucial for accurate history
+    subject: string; // Helpful for history
 }
 
 // DATA ACCESS FUNCTIONS using Firestore
