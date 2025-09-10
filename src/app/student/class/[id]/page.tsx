@@ -69,11 +69,11 @@ export default function StudentClassPage() {
       <main className="flex flex-1 flex-col items-center justify-center p-4">
         <div className="w-full max-w-2xl">
           <Button asChild variant="ghost" className="mb-4">
-              <Link href="/student/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
+              <Link href="/student/attendance"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Classes</Link>
           </Button>
-          <Card className="w-full gradient-card-1">
+          <Card className="w-full bg-card/80 backdrop-blur-sm rounded-xl">
             <CardHeader>
-              <CardTitle className="text-2xl text-center font-headline">{classItem.subject}</CardTitle>
+              <CardTitle className="text-2xl text-center font-semibold">{classItem.subject}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-6 pt-6">
               <div className="text-muted-foreground space-y-2 text-center">

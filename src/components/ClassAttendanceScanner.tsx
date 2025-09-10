@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, CheckCircle, XCircle, ScanLine, AlertCircle } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import type { Class, Schedule } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -104,6 +104,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
         toast({
           title: "Attendance Marked!",
           description: "Your attendance has been successfully recorded.",
+          className: "bg-accent text-accent-foreground",
         });
 
     } catch (error) {
@@ -214,7 +215,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
     switch(status) {
         case 'scanning':
             return (
-                <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border bg-muted">
+                <div className="relative w-full max-w-md overflow-hidden rounded-lg border bg-muted aspect-video">
                     <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
                     <canvas ref={canvasRef} className="hidden" />
                     {hasCameraPermission === false && (
@@ -235,9 +236,9 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
         case 'verifying':
             return <p className="text-muted-foreground">Verifying QR Code...</p>;
         case 'success':
-            return <Alert className="border-green-500 text-green-700"><CheckCircle className="h-4 w-4" /><AlertTitle>Success!</AlertTitle><AlertDescription>Attendance marked for {classItem.subject}.</AlertDescription></Alert>;
+            return <Alert className="border-green-500 text-green-700 bg-green-500/10"><CheckCircle className="h-4 w-4" /><AlertTitle>Success!</AlertTitle><AlertDescription>Attendance marked for {classItem.subject}.</AlertDescription></Alert>;
         case 'already_marked':
-            return <Alert className="border-green-500 text-green-700"><CheckCircle className="h-4 w-4" /><AlertTitle>Already Marked</AlertTitle><AlertDescription>Your attendance is already recorded for today.</AlertDescription></Alert>;
+            return <Alert className="border-green-500 text-green-700 bg-green-500/10"><CheckCircle className="h-4 w-4" /><AlertTitle>Already Marked</AlertTitle><AlertDescription>Your attendance is already recorded for today.</AlertDescription></Alert>;
         case 'not_class_time':
             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Class Not In Session</AlertTitle><AlertDescription>You can only mark attendance during scheduled class hours.</AlertDescription></Alert>;
         case 'wrong_qr':
@@ -248,7 +249,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
         default:
             return (
                 <div className="flex flex-col items-center space-y-2">
-                    <Button onClick={startScan} disabled={isButtonDisabled} size="lg">
+                    <Button onClick={startScan} disabled={isButtonDisabled} size="lg" className="w-64">
                         <Camera className="mr-2" /> Scan to Mark Attendance
                     </Button>
                 </div>
@@ -257,7 +258,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-full min-h-[150px]">
+    <div className="flex flex-col items-center justify-center w-full min-h-[200px]">
       {renderContent()}
     </div>
   );
