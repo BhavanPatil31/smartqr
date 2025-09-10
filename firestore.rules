@@ -54,7 +54,7 @@ service cloud.firestore {
     match /{path=**}/records/{recordId} {
         // A student can read their own attendance records.
         // The query in the app filters by studentId, so this rule is sufficient for reads.
-        allow read: if request.auth.uid == resource.data.studentId;
+        allow read: if isSignedIn() && request.auth.uid == resource.data.studentId;
         
         // A student can create their own attendance record if they are enrolled in the class.
         // `path[0]` is 'classes', `path[1]` is the classId.

@@ -147,8 +147,6 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     const studentClasses = await getStudentClasses(department, semester);
     if (studentClasses.length === 0) return { records: [], studentClasses: [] };
 
-    // More reliable way: query records for each class and date collection.
-    // This avoids complex collection group queries that need specific indexes and rules.
     let allRecords: AttendanceRecord[] = [];
     
     try {

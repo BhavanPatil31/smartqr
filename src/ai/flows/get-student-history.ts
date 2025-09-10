@@ -61,6 +61,11 @@ const getStudentHistoryFlow = ai.defineFlow(
   async ({ studentId }) => {
     const { records: attendanceRecords, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
     
+    // If student has no classes assigned, return empty data immediately.
+    if (studentClasses.length === 0) {
+        return { subjectStats: [], records: [] };
+    }
+
     const subjectStats: { [subject: string]: { attended: number; total: number } } = {};
     const historyRecords: StudentHistoryRecord[] = [];
 
