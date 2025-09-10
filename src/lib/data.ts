@@ -147,7 +147,7 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
 
     let allRecords: AttendanceRecord[] = [];
 
-    // This query is more efficient and reliable than a collection group query without a specific index.
+    // This query is more efficient and reliable.
     const recordsQuery = query(
         collectionGroup(db, 'records'),
         where('studentId', '==', studentId)
