@@ -133,10 +133,12 @@ export const getStudentsByDepartment = async (department: string) => {
 export const getCorrectStudentAttendanceRecords = async (studentId: string): Promise<{ records: AttendanceRecord[], studentClasses: Class[] }> => {
     const studentDocRef = doc(db, 'students', studentId);
     const studentDocSnap = await getDoc(studentDocRef);
+
     if (!studentDocSnap.exists()) {
         console.warn(`No profile found for student ${studentId}`);
         return { records: [], studentClasses: [] };
     }
+
     const studentProfile = studentDocSnap.data() as StudentProfile;
     const { department, semester } = studentProfile;
 
@@ -144,16 +146,32 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
         return { records: [], studentClasses: [] };
     }
 
+    // 1. Get all classes the student is enrolled in.
     const studentClasses = await getStudentClasses(department, semester);
-    
-    let allRecords: AttendanceRecord[] = [];
-    
+    if (studentClasses.length === 0) {
+        return { records: [], studentClasses: [] };
+    }
+
+    // 2. For each class, fetch the student's attendance records.
+    const allRecords: AttendanceRecord[] = [];
     try {
-        const recordsQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
-        const recordsSnapshot = await getDocs(recordsQuery);
-        recordsSnapshot.forEach(doc => {
-            allRecords.push(doc.data() as AttendanceRecord);
+        // Create a batch of promises to fetch records for all classes concurrently.
+        const recordPromises = studentClasses.map(async (classItem) => {
+            const attendanceDatesRef = collection(db, 'classes', classItem.id, 'attendance');
+            const datesSnapshot = await getDocs(attendanceDatesRef);
+            
+            for (const dateDoc of datesSnapshot.docs) {
+                const recordRef = doc(db, 'classes', classItem.id, 'attendance', dateDoc.id, 'records', studentId);
+                const recordSnap = await getDoc(recordRef);
+                if (recordSnap.exists()) {
+                    allRecords.push(recordSnap.data() as AttendanceRecord);
+                }
+            }
         });
+
+        // Wait for all promises to resolve.
+        await Promise.all(recordPromises);
+
     } catch (error) {
         console.error("Failed to fetch attendance records:", error);
         throw new Error("Could not fetch attendance records from Firestore.");
