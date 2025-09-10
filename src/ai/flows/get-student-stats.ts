@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getCorrectStudentAttendanceRecords } from '@/lib/data';
-import { differenceInWeeks, parseISO, startOfDay } from 'date-fns';
+import { eachDayOfInterval, getDay, parseISO, startOfDay } from 'date-fns';
 
 const GetStudentStatsInputSchema = z.object({
   studentId: z.string().describe('The ID of the student.'),
@@ -25,6 +25,10 @@ const GetStudentStatsOutputSchema = z.object({
     attendanceRate: z.number(),
 });
 export type GetStudentStatsOutput = z.infer<typeof GetStudentStatsOutputSchema>;
+
+const DAY_MAP: { [key: string]: number } = {
+    "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6,
+};
 
 export async function getStudentStats(input: GetStudentStatsInput): Promise<GetStudentStatsOutput> {
   return getStudentStatsFlow(input);
@@ -42,23 +46,25 @@ const getStudentStatsFlow = ai.defineFlow(
 
         let totalClassesHeld = 0;
         
-        // A more accurate system to calculate total classes held up to today.
-        // We can assume a fixed start date for the current semester.
         const semesterStartDate = startOfDay(parseISO('2024-07-15'));
         const today = startOfDay(new Date());
         
-        if (today >= semesterStartDate) {
-            const weeksPassed = differenceInWeeks(today, semesterStartDate, { roundingMethod: 'floor' }) + 1;
-    
-            if (studentClasses.length > 0 && weeksPassed > 0) {
-                studentClasses.forEach(c => {
-                    totalClassesHeld += (c.schedules?.length || 0) * weeksPassed;
+        if (today >= semesterStartDate && studentClasses.length > 0) {
+            const daysInSemesterSoFar = eachDayOfInterval({
+                start: semesterStartDate,
+                end: today
+            });
+
+            studentClasses.forEach(c => {
+                daysInSemesterSoFar.forEach(day => {
+                    const dayOfWeek = getDay(day); // 0 for Sunday, 1 for Monday, etc.
+                    const relevantSchedules = c.schedules.filter(schedule => DAY_MAP[schedule.day] === dayOfWeek);
+                    totalClassesHeld += relevantSchedules.length;
                 });
-            }
+            });
         }
         
         const attendedClasses = attendanceRecords.length;
-        // Base total classes on the higher of estimated held classes or actual attended classes.
         const totalClasses = Math.max(totalClassesHeld, attendedClasses);
         const missedClasses = Math.max(0, totalClasses - attendedClasses);
         const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
