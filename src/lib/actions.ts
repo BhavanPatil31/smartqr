@@ -4,6 +4,7 @@
 import { detectSuspiciousAttendance, type DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
 import { getAttendanceForClass } from '@/ai/flows/get-attendance';
 import { getStudentStats } from '@/ai/flows/get-student-stats';
+import { getStudentHistory } from '@/ai/flows/get-student-history';
 import type { AttendanceRecord } from '@/lib/data';
 import { unstable_noStore as noStore } from 'next/cache';
 
@@ -42,5 +43,17 @@ export async function getStudentAttendanceStats(studentId: string) {
     } catch (error) {
         console.error("Failed to calculate student attendance stats:", error);
         throw new Error('Could not calculate attendance stats.');
+    }
+}
+
+
+export async function getStudentHistoryAction(studentId: string) {
+    noStore();
+    try {
+        const history = await getStudentHistory({ studentId });
+        return history;
+    } catch (error) {
+        console.error("Failed to fetch student history:", error);
+        throw new Error('Could not fetch student history.');
     }
 }

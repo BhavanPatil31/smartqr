@@ -10,7 +10,7 @@ import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, LogOut, CheckSquare } from 'lucide-react';
+import { User, LogOut, CheckSquare, History } from 'lucide-react';
 import type { StudentProfile } from '@/lib/data';
 import { getStudentAttendanceStats } from '@/lib/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -69,7 +69,7 @@ export default function StudentDashboard() {
         }
       } catch (error) {
           console.error("Failed to fetch student data:", error);
-          setStats({ totalClasses: 0, attendedClasses: 0, missedClasses: 0, attendanceRate: 0 });
+           setStats(null);
       } finally {
         setIsLoadingData(false);
       }
@@ -131,6 +131,14 @@ export default function StudentDashboard() {
             <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Student'}!</h1>
             <p className="text-muted-foreground">Here is your attendance overview.</p>
           </div>
+           {isProfileComplete && (
+             <Button asChild variant="outline">
+                <Link href="/student/history">
+                    <History className="mr-2 h-4 w-4" />
+                    View Detailed History
+                </Link>
+             </Button>
+           )}
         </div>
         
         {isProfileComplete && stats ? (

@@ -147,20 +147,16 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
 
     let allRecords: AttendanceRecord[] = [];
 
-    for (const cls of studentClasses) {
-        const attendanceSubCollectionRef = collection(db, 'classes', cls.id, 'attendance');
-        const dateDocs = await getDocs(attendanceSubCollectionRef);
-
-        for (const dateDoc of dateDocs.docs) {
-            const recordsRef = collection(db, 'classes', cls.id, 'attendance', dateDoc.id, 'records');
-            const studentRecordQuery = query(recordsRef, where('studentId', '==', studentId));
-            const studentRecordsSnapshot = await getDocs(studentRecordQuery);
-            
-            studentRecordsSnapshot.forEach(recordDoc => {
-                allRecords.push(recordDoc.data() as AttendanceRecord);
-            });
-        }
-    }
+    // This query is more efficient than iterating through every class
+    const recordsQuery = query(
+        collectionGroup(db, 'records'),
+        where('studentId', '==', studentId)
+    );
+    const recordsSnapshot = await getDocs(recordsQuery);
+    
+    recordsSnapshot.forEach(recordDoc => {
+        allRecords.push(recordDoc.data() as AttendanceRecord);
+    });
 
     return { records: allRecords, studentClasses };
 };
