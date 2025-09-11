@@ -24,8 +24,12 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    function getRoleData(role) {
+      return get(/databases/$(database)/documents/$(role)/$(request.auth.uid)).data;
+    }
 
-    // Profile Rules
+    // Profile Rules: Users can only read/write their own profiles.
     match /students/{studentId} {
       allow read, write: if isOwner(studentId);
     }
@@ -38,36 +42,39 @@ service cloud.firestore {
 
     // Class Rules
     match /classes/{classId} {
-        // Students can read classes in their department and semester
-        allow read: if isStudent() && 
-                    resource.data.department == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department && 
-                    resource.data.semester == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.semester;
+        // Students can read classes that match their department and semester.
+        allow read: if isStudent() &&
+                      resource.data.department == getRoleData('students').department &&
+                      resource.data.semester == getRoleData('students').semester;
         
-        // Teachers can create classes and read/update/delete their own classes
+        // Teachers can create classes and read/update/delete their own classes.
         allow create: if isTeacher();
         allow read, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
         
-        // Admins can read classes in their department
-        allow read: if isAdmin() && resource.data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
-
-        // Nested Attendance Records
-        match /attendance/{date}/records/{recordId} {
-            // Students can create their own attendance record if they are enrolled in the class.
-            allow create: if isStudent() &&
-                            request.auth.uid == request.resource.data.studentId &&
-                            get(/databases/$(database)/documents/classes/$(classId)).data.department == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department &&
-                            get(/databases/$(database)/documents/classes/$(classId)).data.semester == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.semester;
-            
-            // Teacher of a class can read all records for that class.
-            // Admins of the department can also read the records.
-            allow read: if (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-                          (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department);
-        }
+        // Admins can read all classes within their department.
+        allow read: if isAdmin() && resource.data.department == getRoleData('admins').department;
     }
 
-    // Rule for Collection Group Query on 'records'
+    // Attendance Record Rules
+    match /classes/{classId}/attendance/{date}/records/{recordId} {
+      // Students can create their own attendance record if they are enrolled in the class.
+      allow create: if isStudent() &&
+                      isOwner(request.resource.data.studentId) &&
+                      get(/databases/$(database)/documents/classes/$(classId)).data.department == getRoleData('students').department &&
+                      get(/databases/$(database)/documents/classes/$(classId)).data.semester == getRoleData('students').semester;
+
+      // Teachers of the class can read all records for that class.
+      // Admins of the department can also read the records.
+      // Students can read their own records.
+      allow read: if (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+                    (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == getRoleData('admins').department) ||
+                    (isStudent() && isOwner(resource.data.studentId));
+    }
+    
+    // Rule for Collection Group Query
     match /{path=**}/records/{recordId} {
-      // A student can read their own attendance records across all classes.
+      // Allow a student to read their own attendance records across all classes.
+      // This is essential for the student history/stats page.
       allow read: if isStudent() && request.auth.uid == resource.data.studentId;
     }
   }

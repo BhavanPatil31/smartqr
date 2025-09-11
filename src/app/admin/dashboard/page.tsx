@@ -47,23 +47,30 @@ export default function AdminDashboard() {
         return;
     }
 
-    setIsLoadingData(true);
     const docRef = doc(db, 'admins', user.uid);
     
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
+        setIsLoadingData(true);
         if (docSnap.exists()) {
             const adminProfile = docSnap.data() as AdminProfile;
             setProfile(adminProfile);
             
             if (adminProfile.department) {
-                const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
-                    getClassesByDepartment(adminProfile.department),
-                    getTeachersByDepartment(adminProfile.department),
-                    getStudentsByDepartment(adminProfile.department)
-                ]);
-                setClasses(deptClasses);
-                setTeachers(deptTeachers);
-                setStudents(deptStudents);
+                try {
+                    const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
+                        getClassesByDepartment(adminProfile.department),
+                        getTeachersByDepartment(adminProfile.department),
+                        getStudentsByDepartment(adminProfile.department)
+                    ]);
+                    setClasses(deptClasses);
+                    setTeachers(deptTeachers);
+                    setStudents(deptStudents);
+                } catch (error) {
+                    console.error("Error fetching department data:", error);
+                    setClasses([]);
+                    setTeachers([]);
+                    setStudents([]);
+                }
             } else {
                 setClasses([]);
                 setTeachers([]);
