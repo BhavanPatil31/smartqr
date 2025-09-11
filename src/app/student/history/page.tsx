@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import type { GetStudentHistoryOutput } from '@/ai/flows/get-student-history';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubjectWiseAttendance } from '@/components/SubjectWiseAttendance';
 import { AttendanceHistoryList } from '@/components/AttendanceHistoryList';
+import { doc, getDoc } from 'firebase/firestore';
+import { getStudentClasses, type StudentProfile } from '@/lib/data';
 
 type FilterPeriod = 'current_month' | 'last_month' | 'full_semester';
 
@@ -27,6 +29,7 @@ export default function StudentHistoryPage() {
     
     const [subjectFilter, setSubjectFilter] = useState('all');
     const [periodFilter, setPeriodFilter] = useState<FilterPeriod>('current_month');
+    const [allSubjects, setAllSubjects] = useState<string[]>([]);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -35,12 +38,27 @@ export default function StudentHistoryPage() {
     }, [user, loading, router]);
 
     useEffect(() => {
-        const fetchHistory = async () => {
+        const fetchHistoryAndSubjects = async () => {
             if (user) {
                 setIsLoading(true);
                 try {
+                    // Fetch student profile to get department and semester
+                    const studentDocRef = doc(db, 'students', user.uid);
+                    const studentDocSnap = await getDoc(studentDocRef);
+
+                    if (studentDocSnap.exists()) {
+                        const studentProfile = studentDocSnap.data() as StudentProfile;
+                        if (studentProfile.department && studentProfile.semester) {
+                            // Fetch all class subjects for the student
+                            const studentClasses = await getStudentClasses(studentProfile.department, studentProfile.semester);
+                            setAllSubjects(studentClasses.map(c => c.subject));
+                        }
+                    }
+
+                    // Fetch the detailed history data
                     const data = await getStudentHistoryAction(user.uid);
                     setHistoryData(data);
+
                 } catch (error) {
                     console.error("Failed to fetch student history:", error);
                 } finally {
@@ -50,7 +68,7 @@ export default function StudentHistoryPage() {
         };
 
         if (user) {
-            fetchHistory();
+            fetchHistoryAndSubjects();
         }
     }, [user]);
     
@@ -81,7 +99,7 @@ export default function StudentHistoryPage() {
 
     if (loading || isLoading) {
         return (
-            <div className="flex min-h-screen w-full flex-col">
+            <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
                 <Header />
                 <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                     <Skeleton className="h-8 w-48" />
@@ -107,7 +125,7 @@ export default function StudentHistoryPage() {
     }
 
     return (
-        <div className="flex min-h-screen w-full flex-col">
+        <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
             <Header />
             <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                 <div>
@@ -150,7 +168,7 @@ export default function StudentHistoryPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Subjects</SelectItem>
-                                    {historyData?.subjectStats.map(s => <SelectItem key={s.subject} value={s.subject}>{s.subject}</SelectItem>)}
+                                    {allSubjects.map(subject => <SelectItem key={subject} value={subject}>{subject}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
