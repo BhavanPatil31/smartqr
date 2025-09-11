@@ -113,18 +113,21 @@ export const getAttendanceForClassOnDate = (classId: string, date: string): Atte
 
 // Admin data functions
 export const getClassesByDepartment = async (department: string) => {
+    if (!department) return [];
     const q = query(collection(db, 'classes'), where('department', '==', department));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 }
 
 export const getTeachersByDepartment = async (department: string) => {
+    if (!department) return [];
     const q = query(collection(db, 'teachers'), where('department', '==', department));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherProfile));
 }
 
 export const getStudentsByDepartment = async (department: string) => {
+    if (!department) return [];
     const q = query(collection(db, 'students'), where('department', '==', department));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
@@ -150,7 +153,6 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     const studentClasses = await getStudentClasses(department, semester);
     
     // 2. Use a collection group query to efficiently fetch all attendance records for this student.
-    // This is more performant and relies on a specific security rule and index.
     const recordsQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
     const recordsSnapshot = await getDocs(recordsQuery);
     const allRecords = recordsSnapshot.docs.map(doc => doc.data() as AttendanceRecord);

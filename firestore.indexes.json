@@ -16,21 +16,31 @@
       ]
     },
     {
-      "collectionGroup": "classes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "teacherId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "records",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "studentId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "teachers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "department",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "department",
           "order": "ASCENDING"
         }
       ]
