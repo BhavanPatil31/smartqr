@@ -148,26 +148,12 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     
     // 1. Get all classes the student is enrolled in.
     const studentClasses = await getStudentClasses(department, semester);
-    if (studentClasses.length === 0) {
-        return { records: [], studentClasses: [] };
-    }
-
-    // 2. Fetch all attendance records by iterating through the student's classes.
-    // This is more robust with security rules than a collection group query in this case.
-    const allRecords: AttendanceRecord[] = [];
-    for (const studentClass of studentClasses) {
-        const attendanceCollectionRef = collection(db, 'classes', studentClass.id, 'attendance');
-        const dateSubCollections = await getDocs(attendanceCollectionRef);
-
-        for(const dateDoc of dateSubCollections.docs) {
-            const recordsCollectionRef = collection(db, 'classes', studentClass.id, 'attendance', dateDoc.id, 'records');
-            const q = query(recordsCollectionRef, where('studentId', '==', studentId));
-            const recordsSnapshot = await getDocs(q);
-            recordsSnapshot.forEach(doc => {
-                allRecords.push(doc.data() as AttendanceRecord);
-            });
-        }
-    }
+    
+    // 2. Use a collection group query to efficiently fetch all attendance records for this student.
+    // This is more performant and relies on a specific security rule and index.
+    const recordsQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
+    const recordsSnapshot = await getDocs(recordsQuery);
+    const allRecords = recordsSnapshot.docs.map(doc => doc.data() as AttendanceRecord);
     
     return { records: allRecords, studentClasses };
 };

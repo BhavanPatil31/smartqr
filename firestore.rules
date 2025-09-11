@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -32,7 +33,7 @@ service cloud.firestore {
       allow read, write: if isOwner(teacherId);
     }
     match /admins/{adminId} {
-        allow read, write: if isOwner(adminId);
+      allow read, write: if isOwner(adminId);
     }
 
     // Class Rules
@@ -49,19 +50,25 @@ service cloud.firestore {
         // Admins can read classes in their department
         allow read: if isAdmin() && resource.data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
 
-        // Attendance Record Rules (nested)
+        // Nested Attendance Records
         match /attendance/{date}/records/{recordId} {
-             // A student can create their own attendance record if they are enrolled in the class.
+            // Students can create their own attendance record if they are enrolled in the class.
             allow create: if isStudent() &&
                             request.auth.uid == request.resource.data.studentId &&
                             get(/databases/$(database)/documents/classes/$(classId)).data.department == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.department &&
                             get(/databases/$(database)/documents/classes/$(classId)).data.semester == get(/databases/$(database)/documents/students/$(request.auth.uid)).data.semester;
             
-            // Allow authenticated users to read records if they are the student, the teacher of the class, or an admin of the department.
-            allow read: if (isStudent() && request.auth.uid == resource.data.studentId) ||
-                          (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+            // Teacher of a class can read all records for that class.
+            // Admins of the department can also read the records.
+            allow read: if (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
                           (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department);
         }
+    }
+
+    // Rule for Collection Group Query on 'records'
+    match /{path=**}/records/{recordId} {
+      // A student can read their own attendance records across all classes.
+      allow read: if isStudent() && request.auth.uid == resource.data.studentId;
     }
   }
 }
