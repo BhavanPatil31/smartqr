@@ -51,7 +51,7 @@ service cloud.firestore {
 
     // Class Rules
     match /classes/{classId} {
-        // Students and authenticated users can read class data.
+        // Students and other authenticated users can read class data.
         allow read: if isSignedIn();
         
         // Teachers can create classes.
@@ -60,7 +60,7 @@ service cloud.firestore {
         // Only the teacher who created the class can update or delete it.
         allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
         
-        // Admins can read classes in their department.
+        // Admins can list classes in their department.
         allow list: if isAdmin() && getAdminDepartment() == resource.data.department;
 
         // Attendance Subcollection Rules
