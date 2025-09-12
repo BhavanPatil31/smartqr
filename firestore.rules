@@ -3,75 +3,45 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+  
+    // Helper function to check if a user is an admin for a given department
+    function isAdminForDepartment(department) {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
     }
 
-    function isStudent() {
-      return isSignedIn() && exists(/databases/$(database)/documents/students/$(request.auth.uid));
-    }
-
-    function isTeacher() {
-      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function getAdminDepartment() {
-        return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
-    }
-    
-    function getStudent() {
-        return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
-    }
-    
-    function getClass(classId) {
-        return get(/databases/$(database)/documents/classes/$(classId)).data;
-    }
-
-    // Profile Rules
+    // Students can read/write their own profile
     match /students/{studentId} {
-      allow read, write: if isOwner(studentId);
-      allow read: if isAdmin() && resource.data.department == getAdminDepartment();
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
     }
+    
+    // Teachers can read/write their own profile
     match /teachers/{teacherId} {
-      allow read, write: if isOwner(teacherId);
-      allow read: if isAdmin() && resource.data.department == getAdminDepartment();
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
     }
+
+    // Admins can read/write their own profile
     match /admins/{adminId} {
-        allow read, write: if isOwner(adminId);
+        allow read, write: if request.auth != null && request.auth.uid == adminId;
+        // Admins can also read other admins' profiles in their department
+        allow read: if request.auth != null && isAdminForDepartment(resource.data.department);
     }
-
-    // Class Rules
+    
+    // Rules for classes collection
     match /classes/{classId} {
-        allow read: if isStudent() && resource.data.department == getStudent().department && resource.data.semester == getStudent().semester;
-        allow create: if isTeacher();
-        allow read, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
-        allow read: if isAdmin() && resource.data.department == getAdminDepartment();
-    }
+      // Any authenticated user can read class details
+      allow read: if request.auth != null;
+      // Only the assigned teacher can create/update/delete a class
+      allow create, update, delete: if request.auth != null && request.auth.uid == request.resource.data.teacherId;
 
-    // Attendance Record Rules
-    match /{path=**}/records/{recordId} {
-        // A student can read their own attendance records via collection group query.
-        allow read: if isOwner(resource.data.studentId);
-        
-        // A student can create their own attendance record if they are enrolled in the class.
-        allow create: if isStudent() &&
-                        isOwner(request.resource.data.studentId) &&
-                        getClass(path[1]).department == getStudent().department &&
-                        getClass(path[1]).semester == getStudent().semester;
-
-        // A teacher of a class or an admin of the department can read all records for that class.
-        allow read: if (isTeacher() && getClass(path[1]).teacherId == request.auth.uid) ||
-                      (isAdmin() && getClass(path[1]).department == getAdminDepartment());
+      // Nested attendance records
+      match /attendance/{date}/records/{recordId} {
+        // Students can create their own attendance record
+        allow create: if request.auth != null && request.auth.uid == recordId;
+        // Teachers of the class and Admins of the department can read attendance records
+        allow read: if request.auth != null && 
+                       (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
+                        isAdminForDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department));
+      }
     }
   }
 }
