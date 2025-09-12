@@ -16,16 +16,6 @@
       ]
     },
     {
-      "collectionGroup": "records",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "studentId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "teachers",
       "queryScope": "COLLECTION",
       "fields": [

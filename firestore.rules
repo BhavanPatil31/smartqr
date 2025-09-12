@@ -1,47 +1,65 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if a user is an admin for a given department
-    function isAdminForDepartment(department) {
-      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department == department;
+
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
-    // Students can read/write their own profile
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isStudent() {
+      return exists(/databases/$(database)/documents/students/$(request.auth.uid));
+    }
+    
+    function isOwner(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+    
+    function isAdminOfDepartment(classId) {
+      let adminDepartment = get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.department;
+      let classDepartment = get(/databases/$(database)/documents/classes/$(classId)).data.department;
+      return adminDepartment == classDepartment;
+    }
+
     match /students/{studentId} {
-      allow read, write: if request.auth != null && request.auth.uid == studentId;
+      allow read, write: if request.auth.uid == studentId;
     }
-    
-    // Teachers can read/write their own profile
+
     match /teachers/{teacherId} {
-      allow read, write: if request.auth != null && request.auth.uid == teacherId;
-    }
-
-    // Admins can read/write their own profile
-    match /admins/{adminId} {
-        allow read, write: if request.auth != null && request.auth.uid == adminId;
-        // Admins can also read other admins' profiles in their department
-        allow read: if request.auth != null && isAdminForDepartment(resource.data.department);
+      allow read, write: if request.auth.uid == teacherId;
     }
     
-    // Rules for classes collection
-    match /classes/{classId} {
-      // Any authenticated user can read class details
-      allow read: if request.auth != null;
-      // Only the assigned teacher can create/update/delete a class
-      allow create, update, delete: if request.auth != null && request.auth.uid == request.resource.data.teacherId;
+    match /admins/{adminId} {
+      allow read, write: if request.auth.uid == adminId;
+    }
 
-      // Nested attendance records
-      match /attendance/{date}/records/{recordId} {
-        // Students can create their own attendance record
-        allow create: if request.auth != null && request.auth.uid == recordId;
-        // Teachers of the class and Admins of the department can read attendance records
-        allow read: if request.auth != null && 
-                       (get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid ||
-                        isAdminForDepartment(get(/databases/$(database)/documents/classes/$(classId)).data.department));
+    match /classes/{classId} {
+      allow read: if isStudent() || isTeacher() || isAdmin();
+      allow create: if isTeacher();
+      allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+
+      // Rules for the attendance sub-collection
+      match /attendance/{date} {
+        // This match is for the document representing a single day, e.g., '2024-08-15'
+        // It allows reads if you are a teacher/admin of the class.
+        allow read: if (isTeacher() && isOwner(classId)) || (isAdmin() && isAdminOfDepartment(classId));
+
+        // Rules for the records within a specific day's attendance
+        match /records/{recordId} {
+          allow create: if isStudent();
+          allow read: if (isStudent() && recordId == request.auth.uid) || (isTeacher() && isOwner(classId)) || (isAdmin() && isAdminOfDepartment(classId));
+          // Listing records for a specific day
+          allow list: if (isTeacher() && isOwner(classId)) || (isAdmin() && isAdminOfDepartment(classId));
+        }
       }
     }
+    
+     match /records/{path=**} {
+        allow read: if false; // Deny by default, use specific rules above.
+     }
   }
 }
