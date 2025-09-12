@@ -152,7 +152,7 @@ export default function AdminDashboard() {
                 <TabsTrigger value="students"><GraduationCap className="mr-2"/>Students</TabsTrigger>
             </TabsList>
             <TabsContent value="classes">
-                <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                <Card className="mt-4">
                     <CardHeader>
                         <CardTitle>Department Classes</CardTitle>
                         <CardDescription>All classes scheduled for the {profile?.department} department. Click a class to view its attendance.</CardDescription>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
                 </Card>
             </TabsContent>
             <TabsContent value="teachers">
-                <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                <Card className="mt-4">
                     <CardHeader>
                         <CardTitle>Department Faculty</CardTitle>
                         <CardDescription>All teachers in the {profile?.department} department.</CardDescription>
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
                 </Card>
             </TabsContent>
             <TabsContent value="students">
-                <Card className="mt-4 bg-card/50 backdrop-blur-sm">
+                <Card className="mt-4">
                     <CardHeader>
                         <CardTitle>Department Students</CardTitle>
                         <CardDescription>All students enrolled in the {profile?.department} department.</CardDescription>

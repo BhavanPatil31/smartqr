@@ -117,7 +117,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
-            <Card className="bg-card/80 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">{titleCase(userType)} Login</CardTitle>
                 <CardDescription>Enter your email and password to access your dashboard.</CardDescription>
@@ -140,7 +140,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             </Card>
           </TabsContent>
             <TabsContent value="register">
-              <Card className="bg-card/80 backdrop-blur-sm">
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-2xl">{titleCase(userType)} Registration</CardTitle>
                   <CardDescription>Create an account to get started.</CardDescription>

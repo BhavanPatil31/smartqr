@@ -98,7 +98,7 @@ export default function AdminClassViewPage() {
 
   if (loading) {
     return (
-       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+       <div className="flex min-h-screen w-full flex-col bg-muted/40">
           <Header />
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
              <div className="space-y-2">
@@ -127,7 +127,7 @@ export default function AdminClassViewPage() {
   const today = format(new Date(), 'yyyy-MM-dd');
   
   return (
-    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Header>
           <Button onClick={handleLogout} variant="outline" size="sm">
               <LogOut className="mr-2 h-4 w-4" />
@@ -162,7 +162,7 @@ export default function AdminClassViewPage() {
                 <TabsTrigger value="history">Attendance History</TabsTrigger>
             </TabsList>
             <TabsContent value="live" className="mt-4">
-                <Card className="bg-card/50 backdrop-blur-sm">
+                <Card>
                     <CardHeader>
                         <div className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-primary"/>
@@ -176,7 +176,7 @@ export default function AdminClassViewPage() {
                 </Card>
             </TabsContent>
             <TabsContent value="history" className="mt-4">
-                 <Card className="bg-card/50 backdrop-blur-sm">
+                 <Card>
                     <CardHeader>
                         <CardTitle>View Past Attendance</CardTitle>
                         <CardDescription>Select a date to view attendance records.</CardDescription>

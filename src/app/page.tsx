@@ -7,7 +7,7 @@ import { Header } from '@/components/Header';
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-background gradient-bg-dark">
+    <div className="flex flex-col min-h-screen bg-background gradient-bg">
       <Header />
       <main className="flex-1">
         <section className="w-full py-20 md:py-32 lg:py-40 xl:py-56">
@@ -81,7 +81,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/20">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/50">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
@@ -92,7 +92,7 @@ export default function Home() {
               </p>
             </div>
              <div className="mt-12 grid max-w-6xl gap-8 md:grid-cols-3 mx-auto">
-                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card">
                   <CardHeader>
                     <div className="flex items-center gap-4">
                       <div className="bg-primary rounded-md p-3 flex items-center justify-center">
@@ -112,7 +112,7 @@ export default function Home() {
                     </Button>
                   </CardFooter>
                 </Card>
-                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card">
                   <CardHeader>
                      <div className="flex items-center gap-4">
                       <div className="bg-primary rounded-md p-3 flex items-center justify-center">
@@ -132,7 +132,7 @@ export default function Home() {
                     </Button>
                   </CardFooter>
                 </Card>
-                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card/50">
+                <Card className="flex flex-col text-left hover:shadow-xl transition-shadow bg-card">
                   <CardHeader>
                      <div className="flex items-center gap-4">
                       <div className="bg-primary rounded-md p-3 flex items-center justify-center">
@@ -156,7 +156,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-border/50">
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; 2024 QAttend. All rights reserved.</p>
       </footer>
     </div>

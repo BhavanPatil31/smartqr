@@ -87,7 +87,7 @@ export default function StudentDashboard() {
 
   if (loading || isLoadingData) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <Header>
            <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-32" />
@@ -112,7 +112,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Header>
           <Button asChild variant="default" size="sm">
               <Link href="/student/attendance"><CheckSquare className="mr-2 h-4 w-4" /> Mark Attendance</Link>
@@ -143,7 +143,7 @@ export default function StudentDashboard() {
         
         {isProfileComplete && stats ? (
             <div className="grid gap-6 pt-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="lg:col-span-2 bg-card/80 backdrop-blur-sm rounded-xl">
+                <Card className="lg:col-span-2 rounded-xl">
                     <CardHeader>
                         <CardTitle>Attendance Rate</CardTitle>
                         <CardDescription>
@@ -157,19 +157,19 @@ export default function StudentDashboard() {
                     </CardContent>
                 </Card>
                 <div className="space-y-6">
-                    <Card className="bg-card/80 backdrop-blur-sm rounded-xl">
+                    <Card className="rounded-xl">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-4xl font-bold">{stats.attendanceRate}%</CardTitle>
                           <CardDescription>Overall Rate</CardDescription>
                         </CardHeader>
                     </Card>
-                    <Card className="bg-card/80 backdrop-blur-sm rounded-xl">
+                    <Card className="rounded-xl">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-4xl font-bold">{stats.attendedClasses}</CardTitle>
                           <CardDescription>Classes Attended</CardDescription>
                         </CardHeader>
                     </Card>
-                    <Card className="bg-card/80 backdrop-blur-sm rounded-xl">
+                    <Card className="rounded-xl">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-4xl font-bold">{stats.missedClasses}</CardTitle>
                           <CardDescription>Classes Missed</CardDescription>
@@ -178,7 +178,7 @@ export default function StudentDashboard() {
                 </div>
             </div>
         ) : (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed shadow-sm mt-12 bg-card/50 min-h-[400px]">
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed shadow-sm mt-12 bg-card min-h-[400px]">
                 <div className="flex flex-col items-center gap-1 text-center p-8">
                 <h3 className="text-2xl font-bold tracking-tight">
                     {isProfileComplete ? "No Data Available" : "Complete Your Profile"}

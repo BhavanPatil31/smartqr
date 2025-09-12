@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
-import { PT_Sans } from 'next/font/google'; // Changed from Inter to PT_Sans
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
-// Setup PT Sans font
-const ptSans = PT_Sans({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '700'],
   variable: '--font-sans',
 });
 
@@ -22,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${ptSans.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
         <Toaster />
       </body>

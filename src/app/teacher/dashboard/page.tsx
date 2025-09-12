@@ -99,7 +99,7 @@ export default function TeacherDashboard() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card/50 backdrop-blur-sm min-h-[400px]">
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-12 bg-card min-h-[400px]">
             <div className="flex flex-col items-center gap-2 text-center p-8">
               <h3 className="text-2xl font-bold tracking-tight">
                 No classes created yet

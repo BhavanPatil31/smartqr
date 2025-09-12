@@ -74,7 +74,7 @@ export default function StudentAttendancePage() {
 
   if (loading || isLoadingClasses) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <Header>
           <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-32" />
@@ -100,7 +100,7 @@ export default function StudentAttendancePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Header>
           <Button asChild variant="ghost" size="sm">
               <Link href="/student/dashboard">Dashboard</Link>
@@ -127,7 +127,7 @@ export default function StudentAttendancePage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed shadow-sm mt-12 bg-card/50">
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed shadow-sm mt-12 bg-card">
             <div className="flex flex-col items-center gap-1 text-center p-8">
               <h3 className="text-2xl font-bold tracking-tight">
                 No classes found

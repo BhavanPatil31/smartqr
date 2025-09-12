@@ -131,7 +131,7 @@ export default function TeacherClassPage() {
   
   if (loading) {
     return (
-       <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+       <div className="flex min-h-screen w-full flex-col bg-muted/40">
           <Header />
           <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
              <div className="space-y-2">
@@ -185,7 +185,7 @@ export default function TeacherClassPage() {
   const today = format(new Date(), 'yyyy-MM-dd');
   
   return (
-    <div className="flex min-h-screen w-full flex-col gradient-bg-dark">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-start justify-between">
@@ -218,7 +218,7 @@ export default function TeacherClassPage() {
                 <TabsTrigger value="ai">AI Analysis</TabsTrigger>
              </TabsList>
              <TabsContent value="live" className="mt-4">
-                <Card className="bg-card/50 backdrop-blur-sm">
+                <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -239,7 +239,7 @@ export default function TeacherClassPage() {
                 </Card>
              </TabsContent>
               <TabsContent value="history" className="mt-4">
-                 <Card className="bg-card/50 backdrop-blur-sm">
+                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>
@@ -282,7 +282,7 @@ export default function TeacherClassPage() {
                  </Card>
               </TabsContent>
                <TabsContent value="ai" className="mt-4">
-                    <Card className="bg-card/50 backdrop-blur-sm">
+                    <Card>
                         <CardHeader>
                             <div className="flex items-center gap-2">
                             <Cpu className="h-5 w-5 text-primary"/>
@@ -299,13 +299,13 @@ export default function TeacherClassPage() {
           </div>
           
           <div className="lg:col-span-1">
-            <Card className="gradient-card-2 text-primary-foreground dark:text-primary-foreground">
+            <Card className="gradient-card-2">
               <CardHeader>
                 <div className="flex items-center gap-2">
                     <QrCodeIcon className="h-5 w-5"/>
                     <CardTitle>Class QR Code</CardTitle>
                 </div>
-                <CardDescription className="text-primary-foreground/80 dark:text-primary-foreground/80">Students can scan this to mark attendance.</CardDescription>
+                <CardDescription className="text-primary-foreground/80">Students can scan this to mark attendance.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center">
                  {qrCodeUrl ? (
@@ -321,7 +321,7 @@ export default function TeacherClassPage() {
                  ) : (
                     <Skeleton className="h-[216px] w-[216px]" />
                  )}
-                <p className="mt-4 text-xs text-primary-foreground/70 dark:text-primary-foreground/70 text-center">This QR code directs students to the attendance page.</p>
+                <p className="mt-4 text-xs text-primary-foreground/70 text-center">This QR code directs students to the attendance page.</p>
               </CardContent>
             </Card>
           </div>

@@ -172,7 +172,7 @@ export default function AdminProfilePage() {
         <Card className="gradient-card-1">
           <CardContent className="pt-6 flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
+              <AvatarFallback className="text-3xl bg-primary/20 text-foreground">
                 {profile.fullName?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -184,7 +184,7 @@ export default function AdminProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/80 backdrop-blur-sm">
+        <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
             <CardDescription>View and edit your profile information.</CardDescription>

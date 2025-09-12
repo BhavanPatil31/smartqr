@@ -106,7 +106,7 @@ export default function StudentProfilePage() {
   
   if (authLoading || loading || !profile) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-muted/40">
         <Header>
             <div className="flex items-center gap-2">
                 <Skeleton className="h-9 w-24" />
@@ -149,7 +149,7 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-muted/40">
       <Header>
         <Button onClick={handleLogout} variant="outline" size="sm">
             <LogOut className="mr-2 h-4 w-4"/> Logout
@@ -175,9 +175,9 @@ export default function StudentProfilePage() {
         </div>
 
         <Card className="rounded-xl overflow-hidden">
-          <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6 bg-card/80 backdrop-blur-sm">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarFallback className="text-3xl bg-primary/20 text-primary-foreground">
+              <AvatarFallback className="text-3xl bg-primary/20 text-foreground">
                 {profile.fullName?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -189,7 +189,7 @@ export default function StudentProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl bg-card/80 backdrop-blur-sm">
+        <Card className="rounded-xl">
           <CardHeader>
             <CardTitle>Academic Information</CardTitle>
             <CardDescription>View and edit your personal and academic details.</CardDescription>
