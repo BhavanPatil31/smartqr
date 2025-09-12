@@ -64,7 +64,25 @@ export async function getStudentHistoryAction(studentId: string) {
 export async function updateClassAction(classId: string, classData: any) {
     try {
         const classDocRef = doc(db, 'classes', classId);
-        await updateDoc(classDocRef, classData);
+
+        // Create a copy of the data to modify
+        const cleanedData = { ...classData };
+
+        // Firestore does not allow `undefined` values.
+        // Also, zod's `coerce.number()` can result in NaN if the input is empty.
+        // We need to clean the object of these values before updating.
+        Object.keys(cleanedData).forEach(key => {
+            if (cleanedData[key] === undefined) {
+                delete cleanedData[key];
+            }
+        });
+        
+        if (isNaN(cleanedData.maxStudents)) {
+            delete cleanedData.maxStudents;
+        }
+
+        await updateDoc(classDocRef, cleanedData);
+
         revalidatePath('/teacher/dashboard');
         revalidatePath(`/teacher/edit-class/${classId}`);
     } catch (error) {
