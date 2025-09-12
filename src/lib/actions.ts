@@ -7,6 +7,9 @@ import { getStudentStats } from '@/ai/flows/get-student-stats';
 import { getStudentHistory } from '@/ai/flows/get-student-history';
 import type { AttendanceRecord } from '@/lib/data';
 import { unstable_noStore as noStore } from 'next/cache';
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { revalidatePath } from 'next/cache';
 
 export async function checkSuspiciousActivityAction(classId: string, attendanceRecords: AttendanceRecord[]): Promise<DetectSuspiciousAttendanceOutput> {
     const formattedRecords = attendanceRecords.map(record => ({
@@ -55,5 +58,28 @@ export async function getStudentHistoryAction(studentId: string) {
     } catch (error) {
         console.error("Failed to fetch student history:", error);
         throw new Error('Could not fetch student history.');
+    }
+}
+
+export async function updateClassAction(classId: string, classData: any) {
+    try {
+        const classDocRef = doc(db, 'classes', classId);
+        await updateDoc(classDocRef, classData);
+        revalidatePath('/teacher/dashboard');
+        revalidatePath(`/teacher/edit-class/${classId}`);
+    } catch (error) {
+        console.error('Error updating class:', error);
+        throw new Error('Could not update class.');
+    }
+}
+
+export async function deleteClassAction(classId: string) {
+    try {
+        const classDocRef = doc(db, 'classes', classId);
+        await deleteDoc(classDocRef);
+        revalidatePath('/teacher/dashboard');
+    } catch (error) {
+        console.error('Error deleting class:', error);
+        throw new Error('Could not delete class.');
     }
 }
