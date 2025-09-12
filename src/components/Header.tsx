@@ -1,4 +1,3 @@
-
 import { QrCode } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -9,8 +8,8 @@ export function Header({ children }: { children?: ReactNode }) {
       <div className="container flex h-16 items-center">
         <div className="mr-auto flex items-center space-x-2">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <QrCode className="h-6 w-6 text-primary" />
-            <span className="font-bold text-xl">QAttend</span>
+            <QrCode className="h-6 w-6 text-foreground" />
+            <span className="font-bold text-xl text-foreground">QAttend</span>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
