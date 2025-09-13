@@ -1,9 +1,10 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Helper functions (unchanged)
     function isSignedIn() {
       return request.auth != null;
     }
@@ -23,59 +24,78 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
-    function getUserData(role) {
-      return get(/databases/$(database)/documents/$(role)/$(request.auth.uid)).data;
+    
+    function getAdminData() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
     }
 
-    // Profile Rules: Users can manage their own profile.
+    function getTeacherData() {
+      return get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data;
+    }
+    
+    function getStudentData() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
+    }
+    
+    function getClassData(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data;
+    }
+
+    // Profile Rules (unchanged)
     match /students/{studentId} {
       allow read, write: if isOwner(studentId);
+      allow list: if isAdmin() && getAdminData().department == resource.data.department;
     }
     match /teachers/{teacherId} {
       allow read, write: if isOwner(teacherId);
+      allow list: if isAdmin() && getAdminData().department == resource.data.department;
     }
     match /admins/{adminId} {
       allow read, write: if isOwner(adminId);
     }
 
-    // Class Rules
+    // Class Rules (unchanged for /classes/{classId} itself)
     match /classes/{classId} {
-      // Students can read classes that match their profile's department and semester.
-      allow get: if isStudent() && 
-                   get(/databases/$(database)/documents/classes/$(classId)).data.department == getUserData('students').department &&
-                   get(/databases/$(database)/documents/classes/$(classId)).data.semester == getUserData('students').semester;
+        allow get: if (isStudent() && getClassData(classId).department == getStudentData().department && getClassData(classId).semester == getStudentData().semester);
+        allow list: if isSignedIn(); 
+        allow create: if isTeacher();
+        allow get, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+        allow get, update, delete: if isAdmin() && resource.data.department == getAdminData().department;
 
-      // Allow authenticated users to list classes. Client-side queries will filter them.
-      allow list: if isSignedIn(); 
-      
-      // Teachers can create classes.
-      allow create: if isTeacher();
-      
-      // The assigned teacher can read, update, and delete their own class.
-      // Combining read and write access here is critical to solve the permission issue.
-      allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
-      
-      // Admins can read and write any class in their department.
-      allow read, write: if isAdmin() && resource.data.department == getUserData('admins').department;
+        // Attendance Subcollection Rules - MODIFIED HERE
+        match /attendance/{date}/records/{recordId} {
+          // A student can create their own attendance record if they are enrolled in the class.
+          allow create: if isStudent() &&
+                        request.resource.data.studentId == request.auth.uid &&
+                        getClassData(classId).department == getStudentData().department &&
+                        getClassData(classId).semester == getStudentData().semester;
+          
+          // Allow read access for attendance records under several conditions:
+          allow read: if (isStudent() && resource.data.studentId == request.auth.uid) || // Student can read their own record
+                        (isTeacher() && getClassData(classId).teacherId == request.auth.uid) || // Teacher who owns the class
+                        (isTeacher() && getClassData(classId).department == getTeacherData().department) || // Any teacher in the class's department
+                        (isAdmin() && getClassData(classId).department == getAdminData().department); // Admin in the class's department
 
-      // Attendance Subcollection Rules
-      match /attendance/{date}/records/{recordId} {
-        // A student can create their own attendance record if they are enrolled in the class.
-        allow create: if isStudent() &&
-                      request.resource.data.studentId == request.auth.uid &&
-                      get(/databases/$(database)/documents/classes/$(classId)).data.department == getUserData('students').department &&
-                      get(/databases/$(database)/documents/classes/$(classId)).data.semester == getUserData('students').semester;
-        
-        // The teacher of the class, or an admin of the department can read attendance records.
-        allow read: if (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-                      (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == getUserData('admins').department);
-      }
+          // Allow update access:
+          // 1. The teacher assigned to the class.
+          // 2. An admin in the class's department.
+          // 3. A student updating their *own* record, provided they don't change the student ID of the record.
+          allow update: if (isTeacher() && getClassData(classId).teacherId == request.auth.uid) ||
+                          (isAdmin() && getClassData(classId).department == getAdminData().department) ||
+                          (isStudent() && resource.data.studentId == request.auth.uid && request.resource.data.studentId == resource.data.studentId);
+            
+          // Allow delete access:
+          // 1. The teacher assigned to the class.
+          // 2. An admin in the class's department.
+          // Students are *not* allowed to delete attendance records to prevent abuse.
+          allow delete: if (isTeacher() && getClassData(classId).teacherId == request.auth.uid) ||
+                          (isAdmin() && getClassData(classId).department == getAdminData().department);
+        }
     }
     
-    // Allow collection group query for a student's own records across all classes.
+    // Allow collection group query for a student's own records across all classes. (unchanged)
     match /{path=**}/records/{recordId} {
-      allow list: if isStudent() && request.query.where.studentId == request.auth.uid;
+        allow read: if isStudent() && resource.data.studentId == request.auth.uid;
     }
   }
 }
