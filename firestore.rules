@@ -34,7 +34,7 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
     }
 
-    // NEW: Helper to get the authenticated teacher's data for department-level checks.
+    // Helper to get the authenticated teacher's data for department-level checks.
     function getTeacherData() {
       // Retrieves the data for the authenticated teacher's profile.
       // Assumes exists() check has already passed or will be handled by the rule.
@@ -82,11 +82,10 @@ service cloud.firestore {
         // Teachers can create classes.
         allow create: if isTeacher();
         
-        // Fix 1: Teachers who own (created/assigned to) the class can now get, update, and delete it.
-        // This rule was already present and is critical for class ownership.
+        // Teachers who own (created/assigned to) the class can get, update, and delete it.
         allow get, update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
         
-        // Fix 1: Admins can now get, update, and delete any class in their department.
+        // Admins can get, update, and delete any class in their department.
         allow get, update, delete: if isAdmin() && resource.data.department == getAdminData().department;
 
         // Attendance Subcollection Rules
@@ -97,10 +96,10 @@ service cloud.firestore {
                         getClassData(classId).department == getStudentData().department &&
                         getClassData(classId).semester == getStudentData().semester;
           
-          // Fix 2: Allow read access for attendance records under several conditions:
+          // Allow read access for attendance records under several conditions:
           allow read: if (isStudent() && resource.data.studentId == request.auth.uid) || // Student can read their own record
                         (isTeacher() && getClassData(classId).teacherId == request.auth.uid) || // Teacher who owns the class
-                        (isTeacher() && getClassData(classId).department == getTeacherData().department) || // NEW: Any teacher in the class's department
+                        (isTeacher() && getClassData(classId).department == getTeacherData().department) || // Any teacher in the class's department
                         (isAdmin() && getClassData(classId).department == getAdminData().department); // Admin in the class's department
         }
     }

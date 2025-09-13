@@ -132,34 +132,27 @@ export default function StudentHistoryPage() {
                     <Button asChild variant="ghost" className="-ml-4 mb-2">
                         <Link href="/student/dashboard"><ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard</Link>
                     </Button>
-                    <h1 className="text-3xl font-bold tracking-tight">Your Attendance History</h1>
                 </div>
 
-                <Card className="rounded-xl">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <BarChart className="h-5 w-5 text-primary" />
-                            <CardTitle>Subject-wise Attendance</CardTitle>
-                        </div>
-                        <CardDescription>Your attendance percentage by subject for the entire semester.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {historyData?.subjectStats && historyData.subjectStats.length > 0 ? (
-                           <SubjectWiseAttendance stats={historyData.subjectStats} />
-                        ) : (
-                           <p className="text-muted-foreground">No attendance data available to show stats.</p>
-                        )}
-                    </CardContent>
-                </Card>
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <BarChart className="h-5 w-5 text-primary" />
+                        <h2 className="text-2xl font-semibold">Subject-wise Attendance</h2>
+                    </div>
+                    <p className="text-muted-foreground">Your attendance percentage by subject for the entire semester.</p>
+                    {historyData?.subjectStats && historyData.subjectStats.length > 0 ? (
+                       <SubjectWiseAttendance stats={historyData.subjectStats} />
+                    ) : (
+                       <p className="text-muted-foreground pt-4">No attendance data available to show stats.</p>
+                    )}
+                </div>
                 
-                <Card className="rounded-xl">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <Filter className="h-5 w-5 text-primary" />
-                            <CardTitle>Filter Records</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex flex-col md:flex-row gap-4">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-5 w-5 text-primary" />
+                        <h2 className="text-2xl font-semibold">Filter Records</h2>
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-4">
                         <div className="grid gap-2 flex-1">
                             <label className="text-sm font-medium">Subject</label>
                             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
@@ -185,21 +178,12 @@ export default function StudentHistoryPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
-                <Card className="rounded-xl">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-5 w-5 text-primary" />
-                            <CardTitle>Attendance Records</CardTitle>
-                        </div>
-                        <CardDescription>Showing {filteredRecords?.length || 0} records.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <AttendanceHistoryList records={filteredRecords || []} />
-                    </CardContent>
-                </Card>
+                <div>
+                   <AttendanceHistoryList records={filteredRecords || []} />
+                </div>
 
             </main>
         </div>
