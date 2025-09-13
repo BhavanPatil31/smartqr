@@ -60,11 +60,21 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "teacherId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "classes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "department",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "teacherId",
+          "fieldPath": "teacherName",
           "order": "ASCENDING"
         }
       ]
