@@ -25,11 +25,9 @@ export async function checkSuspiciousActivityAction(
     }));
 
     const output = await detectSuspiciousAttendance({
-        classId: classId,
-        date: new Date().toISOString().split('T')[0],
-        attendanceRecords: formattedRecords,
-        suspiciousTimeWindow: 0,
-        maxScansPerDevice: 0
+      classId: classId,
+      date: new Date().toISOString().split('T')[0],
+      attendanceRecords: formattedRecords,
     });
     return output;
   } catch (error) {
