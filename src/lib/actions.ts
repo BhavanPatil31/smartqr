@@ -12,19 +12,24 @@ import { db } from './firebase';
 import { revalidatePath } from 'next/cache';
 
 export async function checkSuspiciousActivityAction(classId: string, attendanceRecords: AttendanceRecord[]): Promise<DetectSuspiciousAttendanceOutput> {
-    const formattedRecords = attendanceRecords.map(record => ({
-        studentId: record.studentId,
-        timestamp: record.timestamp,
-        deviceInfo: record.deviceInfo,
-    }));
+    try {
+        const formattedRecords = attendanceRecords.map(record => ({
+            studentId: record.studentId,
+            timestamp: record.timestamp,
+            deviceInfo: record.deviceInfo,
+        }));
 
-    const output = await detectSuspiciousAttendance({
-        classId: classId,
-        date: new Date().toISOString().split('T')[0],
-        attendanceRecords: formattedRecords,
-    });
-    
-    return output;
+        const output = await detectSuspiciousAttendance({
+            classId: classId,
+            date: new Date().toISOString().split('T')[0],
+            attendanceRecords: formattedRecords,
+        });
+        
+        return output;
+    } catch (error) {
+        console.error('Error in checkSuspiciousActivityAction:', error);
+        throw new Error('Could not perform AI attendance analysis.');
+    }
 }
 
 export async function getAttendanceForDate(classId: string, date: string): Promise<AttendanceRecord[]> {
@@ -33,30 +38,28 @@ export async function getAttendanceForDate(classId: string, date: string): Promi
         const records = await getAttendanceForClass({ classId, date });
         return records;
     } catch (error) {
-        console.error(`Failed to get attendance for ${classId} on ${date}:`, error);
+        console.error(`Failed to get attendance for class ${classId} on ${date}:`, error);
         throw new Error('Could not fetch attendance records.');
     }
 }
 
 export async function getStudentAttendanceStats(studentId: string) {
-    noStore();
     try {
         const stats = await getStudentStats({ studentId });
         return stats;
     } catch (error) {
-        console.error("Failed to calculate student attendance stats:", error);
+        console.error(`Failed to calculate student attendance stats for student ${studentId}:`, error);
         throw new Error('Could not calculate attendance stats.');
     }
 }
 
 
 export async function getStudentHistoryAction(studentId: string) {
-    noStore();
     try {
         const history = await getStudentHistory({ studentId });
         return history;
     } catch (error) {
-        console.error("Failed to fetch student history:", error);
+        console.error(`Failed to fetch student history for student ${studentId}:`, error);
         throw new Error('Could not fetch student history.');
     }
 }
@@ -65,28 +68,27 @@ export async function updateClassAction(classId: string, classData: any) {
     try {
         const classDocRef = doc(db, 'classes', classId);
 
-        // Create a copy of the data to modify
         const cleanedData = { ...classData };
 
-        // Firestore does not allow `undefined` values.
-        // Also, zod's `coerce.number()` can result in NaN if the input is empty.
-        // We need to clean the object of these values before updating.
+        // Clean the object of any undefined or invalid values before updating.
         Object.keys(cleanedData).forEach(key => {
             if (cleanedData[key] === undefined) {
                 delete cleanedData[key];
             }
         });
         
-        if (isNaN(cleanedData.maxStudents)) {
+        // Handle edge cases for maxStudents from form coercion.
+        if (isNaN(cleanedData.maxStudents) || cleanedData.maxStudents === 0 || cleanedData.maxStudents === '') {
             delete cleanedData.maxStudents;
         }
 
         await updateDoc(classDocRef, cleanedData);
 
         revalidatePath('/teacher/dashboard');
+        revalidatePath(`/teacher/class/${classId}`);
         revalidatePath(`/teacher/edit-class/${classId}`);
     } catch (error) {
-        console.error('Error updating class:', error);
+        console.error(`Error updating class ${classId}:`, error);
         throw new Error('Could not update class.');
     }
 }
@@ -96,8 +98,9 @@ export async function deleteClassAction(classId: string) {
         const classDocRef = doc(db, 'classes', classId);
         await deleteDoc(classDocRef);
         revalidatePath('/teacher/dashboard');
+        revalidatePath(`/teacher/class/${classId}`);
     } catch (error) {
-        console.error('Error deleting class:', error);
+        console.error(`Error deleting class ${classId}:`, error);
         throw new Error('Could not delete class.');
     }
 }
