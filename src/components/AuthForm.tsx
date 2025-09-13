@@ -106,7 +106,7 @@ export function AuthForm({ userType }: AuthFormProps) {
       <div className="absolute top-6 left-6">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <QrCode className="h-6 w-6 text-primary" />
-          <span className="font-bold text-xl">QAttend</span>
+          <span className="font-bold text-xl">SmartQR</span>
         </Link>
       </div>
       

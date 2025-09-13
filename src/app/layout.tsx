@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'QAttend',
+  title: 'SmartQR',
   description: 'QR Code Attendance App',
 };
 

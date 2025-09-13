@@ -15,7 +15,7 @@ export default function Home() {
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold tracking-tighter text-foreground sm:text-6xl xl:text-7xl/none">
-                  Seamless Attendance Tracking with QAttend
+                  Seamless Attendance Tracking with SmartQR
                 </h1>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
                   The smart, simple, and reliable way to manage attendance. Students scan a QR, and teachers get instant insights.
@@ -45,7 +45,7 @@ export default function Home() {
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">How It Works</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  QAttend simplifies attendance for everyone involved.
+                  SmartQR simplifies attendance for everyone involved.
                 </p>
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function Home() {
         </section>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2024 QAttend. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; 2024 SmartQR. All rights reserved.</p>
       </footer>
     </div>
   );
