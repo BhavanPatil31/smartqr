@@ -164,7 +164,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             canvas.width = video.videoWidth;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
 
             if (code) {
                 verifyAndMarkAttendance(code.data);
@@ -215,7 +215,7 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
     switch(status) {
         case 'scanning':
             return (
-                <div className="relative w-full max-w-md overflow-hidden rounded-lg border bg-muted aspect-video">
+                <div className="relative w-full max-w-lg overflow-hidden rounded-lg border bg-muted aspect-video">
                     <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
                     <canvas ref={canvasRef} className="hidden" />
                     {hasCameraPermission === false && (
