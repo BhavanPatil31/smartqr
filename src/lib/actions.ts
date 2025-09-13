@@ -1,8 +1,9 @@
-
 'use server';
 
-import type { DetectSuspiciousAttendanceOutput } from '@/ai/flows/detect-suspicious-attendance';
-import { detectSuspiciousAttendance } from '@/ai/flows/detect-suspicious-attendance';
+import {
+  detectSuspiciousAttendance,
+  type DetectSuspiciousAttendanceOutput,
+} from '@/ai/flows/detect-suspicious-attendance';
 import { getAttendanceForClass } from '@/ai/flows/get-attendance';
 import { getStudentHistory } from '@/ai/flows/get-student-history';
 import { getStudentStats } from '@/ai/flows/get-student-stats';
@@ -30,7 +31,7 @@ export async function checkSuspiciousActivityAction(
     });
     return output;
   } catch (error) {
-    console.error('AI analysis failed in checkSuspiciousActivityAction:', error);
+    console.error('Error in checkSuspiciousActivityAction:', error);
     throw new Error('Could not perform AI attendance analysis.');
   }
 }
@@ -53,12 +54,13 @@ export async function getAttendanceForDate(
 }
 
 export async function getStudentAttendanceStats(studentId: string) {
+  noStore();
   try {
     const stats = await getStudentStats({ studentId });
     return stats;
   } catch (error) {
     console.error(
-      `Failed to calculate student stats for student ${studentId}:`,
+      `Failed to calculate student attendance stats for student ${studentId}:`,
       error
     );
     throw new Error('Could not calculate attendance stats.');
@@ -66,6 +68,7 @@ export async function getStudentAttendanceStats(studentId: string) {
 }
 
 export async function getStudentHistoryAction(studentId: string) {
+  noStore();
   try {
     const history = await getStudentHistory({ studentId });
     return history;
@@ -82,14 +85,14 @@ export async function updateClassAction(classId: string, classData: any) {
   try {
     const classDocRef = doc(db, 'classes', classId);
 
+    // Defensive copy and clean
     const cleanedData = { ...classData };
-
     Object.keys(cleanedData).forEach((key) => {
       if (cleanedData[key] === undefined) {
         delete cleanedData[key];
       }
     });
-
+    // Only set maxStudents if it's a valid positive number
     if (
       isNaN(cleanedData.maxStudents) ||
       cleanedData.maxStudents === 0 ||
@@ -100,6 +103,7 @@ export async function updateClassAction(classId: string, classData: any) {
 
     await updateDoc(classDocRef, cleanedData);
 
+    // Clear cache for changed routes
     revalidatePath('/teacher/dashboard');
     revalidatePath(`/teacher/class/${classId}`);
     revalidatePath(`/teacher/edit-class/${classId}`);
@@ -113,7 +117,6 @@ export async function deleteClassAction(classId: string) {
   try {
     const classDocRef = doc(db, 'classes', classId);
     await deleteDoc(classDocRef);
-
     revalidatePath('/teacher/dashboard');
     revalidatePath(`/teacher/class/${classId}`);
   } catch (error) {
