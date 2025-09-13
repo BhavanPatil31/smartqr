@@ -23,6 +23,8 @@ export async function checkSuspiciousActivityAction(classId: string, attendanceR
             classId: classId,
             date: new Date().toISOString().split('T')[0],
             attendanceRecords: formattedRecords,
+            suspiciousTimeWindow: 0,
+            maxScansPerDevice: 0
         });
         return output;
     } catch (error) {
