@@ -57,7 +57,6 @@ export interface Class {
     teacherName: string;
     schedules: Schedule[];
     maxStudents?: number;
-    isDeleted?: boolean; // Added for soft delete
 }
 
 export interface AttendanceRecord {
@@ -77,8 +76,7 @@ export const getStudentClasses = async (department: string, semester: string) =>
     const q = query(
         collection(db, 'classes'),
         where('department', '==', department),
-        where('semester', '==', semester),
-        where('isDeleted', '!=', true) // Exclude soft-deleted classes
+        where('semester', '==', semester)
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
@@ -87,8 +85,7 @@ export const getStudentClasses = async (department: string, semester: string) =>
 export const getTeacherClasses = async (teacherId: string) => {
     const q = query(
         collection(db, 'classes'), 
-        where('teacherId', '==', teacherId),
-        where('isDeleted', '!=', true) // Exclude soft-deleted classes
+        where('teacherId', '==', teacherId)
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
@@ -99,10 +96,6 @@ export const getClassById = async (classId: string): Promise<Class | null> => {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const classData = { id: docSnap.id, ...docSnap.data() } as Class;
-        // Do not return the class if it's marked as deleted
-        if (classData.isDeleted) {
-            return null;
-        }
         return classData;
     }
     return null;
@@ -127,8 +120,7 @@ export const getClassesByDepartment = async (department: string) => {
     if (!department) return [];
     const q = query(
         collection(db, 'classes'), 
-        where('department', '==', department),
-        where('isDeleted', '!=', true) // Exclude soft-deleted classes
+        where('department', '==', department)
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
