@@ -37,14 +37,14 @@ export function ClassCard({ classItem, userRole }: ClassCardProps) {
     try {
       await deleteClassAction(classItem.id);
       toast({
-        title: "Class Deleted",
-        description: `The class "${classItem.subject}" has been successfully deleted.`,
+        title: "Class Archived",
+        description: `The class "${classItem.subject}" has been successfully archived and hidden.`,
       });
     } catch (error) {
-      console.error("Failed to delete class:", error);
+      console.error("Failed to archive class:", error);
       toast({
         title: "Error",
-        description: "Could not delete the class. Please try again.",
+        description: "Could not archive the class. Please try again.",
         variant: "destructive",
       });
     }
@@ -96,8 +96,7 @@ export function ClassCard({ classItem, userRole }: ClassCardProps) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the
-                        class "{classItem.subject}" and all of its attendance data.
+                        This action will archive the class "{classItem.subject}". It will be hidden from dashboards but the data will be retained.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

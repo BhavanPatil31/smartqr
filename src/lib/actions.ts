@@ -101,11 +101,11 @@ export async function updateClassAction(classId: string, classData: any) {
 export async function deleteClassAction(classId: string) {
     try {
         const classDocRef = doc(db, 'classes', classId);
-        await deleteDoc(classDocRef);
+        // Soft delete by setting isDeleted flag to true
+        await updateDoc(classDocRef, { isDeleted: true });
         revalidatePath('/teacher/dashboard');
-        revalidatePath(`/teacher/class/${classId}`);
     } catch (error) {
-        console.error(`Error deleting class ${classId}:`, error);
-        throw new Error('Could not delete class.');
+        console.error(`Error archiving class ${classId}:`, error);
+        throw new Error('Could not archive class.');
     }
 }

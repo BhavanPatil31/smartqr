@@ -57,6 +57,7 @@ export interface Class {
     teacherName: string;
     schedules: Schedule[];
     maxStudents?: number;
+    isDeleted?: boolean; // Added for soft delete
 }
 
 export interface AttendanceRecord {
@@ -76,14 +77,19 @@ export const getStudentClasses = async (department: string, semester: string) =>
     const q = query(
         collection(db, 'classes'),
         where('department', '==', department),
-        where('semester', '==', semester)
+        where('semester', '==', semester),
+        where('isDeleted', '!=', true) // Exclude soft-deleted classes
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 };
 
 export const getTeacherClasses = async (teacherId: string) => {
-    const q = query(collection(db, 'classes'), where('teacherId', '==', teacherId));
+    const q = query(
+        collection(db, 'classes'), 
+        where('teacherId', '==', teacherId),
+        where('isDeleted', '!=', true) // Exclude soft-deleted classes
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 };
@@ -92,7 +98,12 @@ export const getClassById = async (classId: string): Promise<Class | null> => {
     const docRef = doc(db, 'classes', classId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Class;
+        const classData = { id: docSnap.id, ...docSnap.data() } as Class;
+        // Do not return the class if it's marked as deleted
+        if (classData.isDeleted) {
+            return null;
+        }
+        return classData;
     }
     return null;
 };
@@ -114,7 +125,11 @@ export const getAttendanceForClassOnDate = (classId: string, date: string): Atte
 // Admin data functions
 export const getClassesByDepartment = async (department: string) => {
     if (!department) return [];
-    const q = query(collection(db, 'classes'), where('department', '==', department));
+    const q = query(
+        collection(db, 'classes'), 
+        where('department', '==', department),
+        where('isDeleted', '!=', true) // Exclude soft-deleted classes
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
 }

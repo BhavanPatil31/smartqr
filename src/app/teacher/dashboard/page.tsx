@@ -29,7 +29,11 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (user) {
       setIsLoadingClasses(true);
-      const q = query(collection(db, 'classes'), where('teacherId', '==', user.uid));
+      const q = query(
+        collection(db, 'classes'), 
+        where('teacherId', '==', user.uid),
+        where('isDeleted', '!=', true) // Only fetch active classes
+      );
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Class));
         setClasses(classesData);
