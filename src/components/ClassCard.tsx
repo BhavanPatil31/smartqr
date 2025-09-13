@@ -20,6 +20,7 @@ import {
 import { deleteClassAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { formatTime } from '@/lib/utils';
 
 
 interface ClassCardProps {
@@ -65,7 +66,7 @@ export function ClassCard({ classItem, userRole }: ClassCardProps) {
               <div key={index} className="flex flex-col space-y-2 pl-1">
                   <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-primary" />
-                      <span>{schedule.day}, {schedule.startTime} - {schedule.endTime}</span>
+                      <span>{schedule.day}, {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-primary" />

@@ -26,7 +26,7 @@ export function AttendanceTable({ records }: AttendanceTableProps) {
                             <TableRow key={record.studentId}>
                                 <TableCell className="font-medium">{record.studentName}</TableCell>
                                 <TableCell>{record.usn}</TableCell>
-                                <TableCell>{format(new Date(record.timestamp), 'HH:mm:ss', { timeZone: 'Asia/Kolkata' })}</TableCell>
+                                <TableCell>{format(new Date(record.timestamp), 'hh:mm:ss a', { timeZone: 'Asia/Kolkata' })}</TableCell>
                             </TableRow>
                         ))
                     ) : (

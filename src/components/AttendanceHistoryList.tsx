@@ -4,9 +4,9 @@
 import type { StudentHistoryRecord } from '@/ai/flows/get-student-history';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
 import { CheckCircle, XCircle, Calendar, Clock, User } from 'lucide-react';
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 
 interface AttendanceHistoryListProps {
     records: StudentHistoryRecord[];
@@ -39,12 +39,12 @@ export function AttendanceHistoryList({ records }: AttendanceHistoryListProps) {
                            </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-1.5">
-                            <p className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {format(new Date(record.date), 'EEE, MMM d, yyyy')}</p>
-                            <p className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {record.startTime} - {record.endTime}</p>
+                            <p className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {formatDate(new Date(record.date), 'EEE, MMM d, yyyy')}</p>
+                            <p className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {formatTime(record.startTime)} - {formatTime(record.endTime)}</p>
                             <p className="flex items-center gap-1.5"><User className="h-4 w-4" /> {record.teacherName}</p>
                         </div>
                         {record.status === 'Present' && record.markedAt && (
-                           <p className="text-xs text-green-600">Marked at: {format(new Date(record.markedAt), 'hh:mm a')}</p>
+                           <p className="text-xs text-green-600">Marked at: {formatDate(new Date(record.markedAt), 'hh:mm a')}</p>
                         )}
                     </div>
                     <div className="pl-4">

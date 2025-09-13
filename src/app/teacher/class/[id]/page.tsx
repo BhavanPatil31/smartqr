@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { getAttendanceForDate as getAttendanceForDateAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { formatTime } from '@/lib/utils';
 
 
 export default function TeacherClassPage() {
@@ -111,7 +112,7 @@ export default function TeacherClassPage() {
         ...sortedRecords.map(record => [
             `"${record.studentName}"`,
             `"${record.usn}"`,
-            `"${format(new Date(record.timestamp), 'HH:mm:ss', { timeZone: 'Asia/Kolkata' })}"`
+            `"${format(new Date(record.timestamp), 'hh:mm:ss a', { timeZone: 'Asia/Kolkata' })}"`
         ].join(','))
     ].join('\n');
     
@@ -200,7 +201,7 @@ export default function TeacherClassPage() {
              <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2">
                 {classItem.schedules?.map((schedule, index) => (
                     <div key={index} className="flex items-center gap-2 mt-1">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.day}, {schedule.startTime} - {schedule.endTime}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.day}, {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
                         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{schedule.roomNumber}</span>
                         {index < (classItem.schedules.length - 1) && <span className="hidden sm:inline">&middot;</span>}
                     </div>

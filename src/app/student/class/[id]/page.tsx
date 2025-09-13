@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Class } from '@/lib/data';
+import { formatTime } from '@/lib/utils';
 
 
 export default function StudentClassPage() {
@@ -80,7 +81,7 @@ export default function StudentClassPage() {
                 <p className="flex items-center justify-center gap-2"><User className="h-4 w-4" /> {classItem.teacherName}</p>
                 {classItem.schedules?.map((schedule, index) => (
                   <div key={index} className="flex items-center justify-center gap-4">
-                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{schedule.day}, {schedule.startTime} - {schedule.endTime}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{schedule.day}, {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
                       <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{schedule.roomNumber}</span>
                   </div>
                 ))}

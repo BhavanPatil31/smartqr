@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getClassesByDepartment, getTeachersByDepartment, getStudentsByDepartment } from '@/lib/data';
+import { formatTime } from '@/lib/utils';
 
 import type { AdminProfile, Class, TeacherProfile, StudentProfile } from '@/lib/data';
 
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
                                         <TableCell>{c.teacherName}</TableCell>
                                         <TableCell>
                                         {c.schedules?.map((s, i) => (
-                                            <div key={i}>{s.day}, {s.startTime} - {s.endTime}</div>
+                                            <div key={i}>{s.day}, {formatTime(s.startTime)} - {formatTime(s.endTime)}</div>
                                         ))}
                                         </TableCell>
                                     </TableRow>
