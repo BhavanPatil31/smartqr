@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +53,8 @@ export default function TeacherProfilePage() {
                 email: user.email || '',
                 phoneNumber: '',
                 department: '',
+                isApproved: false,
+                registeredAt: Date.now(),
               };
               setProfile(defaultProfile);
               setIsEditMode(true); // Force edit mode for new profiles
@@ -89,6 +91,33 @@ export default function TeacherProfilePage() {
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update profile.', variant: 'destructive' });
       console.error("Error updating profile: ", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!user || !profile) return;
+    // Basic validation
+    const missing: string[] = [];
+    if (!profile.fullName) missing.push('Full Name');
+    if (!profile.department) missing.push('Department');
+    if (!profile.phoneNumber) missing.push('Phone Number');
+    if (missing.length) {
+      toast({ title: 'Complete your profile', description: `Missing: ${missing.join(', ')}`, variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'teachers', user.uid), {
+        ...profile,
+        isApproved: false,
+        isApprovalRequested: true
+      });
+      toast({ title: 'Submitted', description: 'Approval request sent to your department admin.'});
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to submit for approval.', variant: 'destructive' });
+      console.error('Submit for approval failed:', error);
     } finally {
       setIsSaving(false);
     }
@@ -158,15 +187,24 @@ export default function TeacherProfilePage() {
                     </Button>
                     <h1 className="text-3xl font-bold">Your Profile</h1>
                 </div>
-                <Button variant={isEditMode ? "default" : "outline"} onClick={() => {
-                    if (isEditMode) {
-                        handleSave();
-                    } else {
-                        setIsEditMode(true);
-                    }
-                }} disabled={isSaving}>
-                    <Edit className="mr-2 h-4 w-4"/> {isEditMode ? (isSaving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
-                </Button>
+                {profile.isApproved ? (
+                  <Button variant="outline" disabled>Approved</Button>
+                ) : profile.isApprovalRequested ? (
+                  <Button variant="outline" disabled>Pending Approval</Button>
+                ) : isEditMode ? (
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    <Edit className="mr-2 h-4 w-4"/> {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsEditMode(true)}>
+                      <Edit className="mr-2 h-4 w-4"/> Edit Profile
+                    </Button>
+                    <Button onClick={handleSubmitForApproval}>
+                      Submit for Approval
+                    </Button>
+                  </div>
+                )}
             </div>
 
             <Card className="gradient-card-1">

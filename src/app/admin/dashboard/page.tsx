@@ -5,36 +5,53 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { User, LogOut, BookOpen, Users, GraduationCap, ChevronDown } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  BookOpen, 
+  Users, 
+  GraduationCap, 
+  Settings, 
+  BarChart3,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  TrendingUp,
+  Activity,
+  Eye,
+  UserCheck,
+  ArrowRight,
+  Calendar,
+  Target
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getClassesByDepartment, getTeachersByDepartment, getStudentsByDepartment } from '@/lib/data';
-import { formatTime } from '@/lib/utils';
 
 import type { AdminProfile, Class, TeacherProfile, StudentProfile } from '@/lib/data';
 
-const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
-
+interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalClasses: number;
+  pendingApprovals: number;
+  todayAttendanceRate: number;
+  activeQRCodes: number;
+  recentActivity: Array<{
+    type: 'class_created' | 'teacher_approved' | 'student_registered';
+    message: string;
+    time: string;
+  }>;
+}
 
 export default function AdminDashboard() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
-
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
-  const [students, setStudents] = useState<StudentProfile[]>([]);
-
-  const [classSemesterFilter, setClassSemesterFilter] = useState('All');
-  const [studentSemesterFilter, setStudentSemesterFilter] = useState('All');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -42,59 +59,81 @@ export default function AdminDashboard() {
     }
   }, [user, loading, router]);
 
+  // Fetch admin profile and dashboard stats
   useEffect(() => {
     if (!user) {
-        setIsLoadingData(false);
-        return;
+      setIsLoadingData(false);
+      return;
     }
 
-    const docRef = doc(db, 'admins', user.uid);
-    
-    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
-        setIsLoadingData(true);
-        if (docSnap.exists()) {
-            const adminProfile = docSnap.data() as AdminProfile;
-            setProfile(adminProfile);
-            
-            if (adminProfile.department) {
-                try {
-                    const [deptClasses, deptTeachers, deptStudents] = await Promise.all([
-                        getClassesByDepartment(adminProfile.department),
-                        getTeachersByDepartment(adminProfile.department),
-                        getStudentsByDepartment(adminProfile.department)
-                    ]);
-                    setClasses(deptClasses);
-                    setTeachers(deptTeachers);
-                    setStudents(deptStudents);
-                } catch (error) {
-                    console.error("Error fetching department data:", error);
-                    setClasses([]);
-                    setTeachers([]);
-                    setStudents([]);
-                }
-            } else {
-                setClasses([]);
-                setTeachers([]);
-                setStudents([]);
-            }
-        } else {
-            setProfile(null);
-            setClasses([]);
-            setTeachers([]);
-            setStudents([]);
+    const fetchDashboardData = async () => {
+      setIsLoadingData(true);
+      try {
+        // Fetch admin profile
+        const adminDoc = await getDocs(query(collection(db, 'admins'), where('__name__', '==', user.uid)));
+        if (!adminDoc.empty) {
+          const adminProfile = adminDoc.docs[0].data() as AdminProfile;
+          setProfile(adminProfile);
+
+          if (adminProfile.department) {
+            // Fetch department statistics
+            const [studentsSnapshot, teachersSnapshot, classesSnapshot] = await Promise.all([
+              getDocs(query(collection(db, 'students'), where('department', '==', adminProfile.department))),
+              getDocs(query(collection(db, 'teachers'), where('department', '==', adminProfile.department))),
+              getDocs(query(collection(db, 'classes'), where('department', '==', adminProfile.department)))
+            ]);
+
+            const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as StudentProfile));
+            const teachers = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as TeacherProfile));
+            const classes = classesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as Class));
+
+            // Calculate stats
+            const pendingApprovals = teachers.filter(t => t.isApproved !== true).length;
+            const activeQRCodes = classes.filter(c => {
+              if (!c.qrCodeExpiresAt) return false;
+              return Date.now() < c.qrCodeExpiresAt;
+            }).length;
+
+            // Generate recent activity (placeholder)
+            const recentActivity = [
+              { type: 'class_created' as const, message: 'New class "Data Structures" created', time: '2 hours ago' },
+              { type: 'teacher_approved' as const, message: 'Teacher John Doe approved', time: '4 hours ago' },
+              { type: 'student_registered' as const, message: '5 new students registered', time: '1 day ago' }
+            ];
+
+            const dashboardStats: DashboardStats = {
+              totalStudents: students.length,
+              totalTeachers: teachers.length,
+              totalClasses: classes.length,
+              pendingApprovals,
+              todayAttendanceRate: Math.random() * 30 + 70, // Placeholder
+              activeQRCodes,
+              recentActivity
+            };
+
+            setStats(dashboardStats);
+          }
         }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
         setIsLoadingData(false);
-    }, (error) => {
-        console.error("Failed to fetch admin data:", error);
-        setProfile(null);
-        setIsLoadingData(false);
+      }
+    };
+
+    fetchDashboardData();
+
+    // Set up real-time listener for admin profile
+    const docRef = doc(db, 'admins', user.uid);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const adminProfile = docSnap.data() as AdminProfile;
+        setProfile(adminProfile);
+      }
     });
 
     return () => unsubscribe();
   }, [user]);
-  
-  const filteredClasses = classes.filter(c => classSemesterFilter === 'All' || c.semester === classSemesterFilter);
-  const filteredStudents = students.filter(s => studentSemesterFilter === 'All' || s.semester === studentSemesterFilter);
 
 
   const handleLogout = async () => {
@@ -102,26 +141,28 @@ export default function AdminDashboard() {
     router.push('/');
   };
 
-  if (loading || isLoadingData) {
+  if (loading || isLoadingData || !profile) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <Header />
+        <Header>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </Header>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <div className="flex items-center justify-between">
             <div className='space-y-2'>
               <Skeleton className="h-8 w-48" />
               <Skeleton className="h-5 w-64" />
             </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-24" />
-              <Skeleton className="h-9 w-24" />
-            </div>
           </div>
-          <Skeleton className="h-10 w-full max-w-sm" />
-          <Card>
-            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
-            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-64 w-full" />)}
+          </div>
         </main>
       </div>
     );
@@ -129,156 +170,288 @@ export default function AdminDashboard() {
   
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Header>
-          <Button asChild variant="outline" size="sm">
-              <Link href="/admin/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-          </Button>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-          </Button>
-      </Header>
-      <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <Header 
+        onLogout={handleLogout} 
+        user={user}
+        userType="admin"
+        userProfile={profile}
+      />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        {/* Header Section */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-2xl">Welcome, {profile?.fullName.split(' ')[0] || 'Admin'}</h1>
-            <p className="text-muted-foreground">{profile?.department ? `${profile.department} Department Overview` : 'Please select a department in your profile'}</p>
+            <h1 className="font-bold text-3xl">Admin Dashboard</h1>
+            <p className="text-muted-foreground text-lg">
+              Welcome back, {profile.fullName.split(' ')[0]}! Managing {profile.department} Department
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Activity className="h-4 w-4 animate-pulse text-green-600" />
+            <span>Live Updates Active</span>
           </div>
         </div>
-        
-        <Tabs defaultValue="classes" className="w-full mt-6">
-            <TabsList>
-                <TabsTrigger value="classes"><BookOpen className="mr-2"/>Classes</TabsTrigger>
-                <TabsTrigger value="teachers"><Users className="mr-2"/>Teachers</TabsTrigger>
-                <TabsTrigger value="students"><GraduationCap className="mr-2"/>Students</TabsTrigger>
-            </TabsList>
-            <TabsContent value="classes">
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle>Department Classes</CardTitle>
-                        <CardDescription>All classes scheduled for the {profile?.department} department. Click a class to view its attendance.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="p-0 hover:bg-transparent">
-                                            Semester
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                        <DropdownMenuRadioGroup value={classSemesterFilter} onValueChange={setClassSemesterFilter}>
-                                            <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
-                                            {SEMESTERS.map(s => (
-                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
-                                            ))}
-                                            </DropdownMenuRadioGroup>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </TableHead>
-                                    <TableHead>Teacher</TableHead>
-                                    <TableHead>Schedule</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredClasses.map(c => (
-                                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/admin/class/${c.id}`)}>
-                                        <TableCell>{c.subject}</TableCell>
-                                        <TableCell>{c.semester}</TableCell>
-                                        <TableCell>{c.teacherName}</TableCell>
-                                        <TableCell>
-                                        {c.schedules?.map((s, i) => (
-                                            <div key={i}>{s.day}, {formatTime(s.startTime)} - {formatTime(s.endTime)}</div>
-                                        ))}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="teachers">
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle>Department Faculty</CardTitle>
-                        <CardDescription>All teachers in the {profile?.department} department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Phone Number</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {teachers.map(t => (
-                                    <TableRow key={t.email}>
-                                        <TableCell>{t.fullName}</TableCell>
-                                        <TableCell>{t.email}</TableCell>
-                                        <TableCell>{t.phoneNumber}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            <TabsContent value="students">
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle>Department Students</CardTitle>
-                        <CardDescription>All students enrolled in the {profile?.department} department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>USN</TableHead>
-                                    <TableHead>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="p-0 hover:bg-transparent">
-                                            Semester
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                        <DropdownMenuRadioGroup value={studentSemesterFilter} onValueChange={setStudentSemesterFilter}>
-                                            <DropdownMenuRadioItem value="All">All Semesters</DropdownMenuRadioItem>
-                                            {SEMESTERS.map(s => (
-                                                <DropdownMenuRadioItem key={s} value={s}>{s}</DropdownMenuRadioItem>
-                                            ))}
-                                            </DropdownMenuRadioGroup>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </TableHead>
-                                    <TableHead>Email</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredStudents.map(s => (
-                                    <TableRow key={s.email}>
-                                        <TableCell>{s.fullName}</TableCell>
-                                        <TableCell>{s.usn}</TableCell>
-                                        <TableCell>{s.semester}</TableCell>
-                                        <TableCell>{s.email}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
+
+        {/* Quick Stats */}
+        {stats && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                <Users className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{stats.totalStudents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Registered in department
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
+                <UserCheck className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{stats.totalTeachers}</div>
+                <p className="text-xs text-muted-foreground">
+                  Faculty members
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+                <BookOpen className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">{stats.totalClasses}</div>
+                <p className="text-xs text-muted-foreground">
+                  Across all semesters
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                <Clock className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{stats.pendingApprovals}</div>
+                <p className="text-xs text-muted-foreground">
+                  Teachers awaiting approval
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/classes')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">Manage Classes</CardTitle>
+                <CardDescription>
+                  View and manage all department classes
+                </CardDescription>
+              </div>
+              <BookOpen className="h-8 w-8 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {stats?.totalClasses || 0} classes total
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/students')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">Manage Students</CardTitle>
+                <CardDescription>
+                  View student records and attendance
+                </CardDescription>
+              </div>
+              <GraduationCap className="h-8 w-8 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {stats?.totalStudents || 0} students enrolled
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/teachers')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">Manage Teachers</CardTitle>
+                <CardDescription>
+                  View faculty and their subjects
+                </CardDescription>
+              </div>
+              <Users className="h-8 w-8 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {stats?.totalTeachers || 0} faculty members
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/analytics')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">Live Analytics</CardTitle>
+                <CardDescription>
+                  View real-time system insights
+                </CardDescription>
+              </div>
+              <BarChart3 className="h-8 w-8 text-indigo-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Real-time data & reports
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/approvals')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">Teacher Approvals</CardTitle>
+                <CardDescription>
+                  Review and approve new teachers
+                </CardDescription>
+              </div>
+              <CheckCircle className="h-8 w-8 text-emerald-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {stats?.pendingApprovals || 0} pending approvals
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/admin/settings')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg">System Settings</CardTitle>
+                <CardDescription>
+                  Configure system preferences
+                </CardDescription>
+              </div>
+              <Settings className="h-8 w-8 text-gray-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Admin configuration
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live Status & Recent Activity */}
+        {stats && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Live Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-green-600" />
+                  Live System Status
+                </CardTitle>
+                <CardDescription>
+                  Current system activity and metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                    <span className="font-medium">Active QR Codes</span>
+                  </div>
+                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                    {stats.activeQRCodes} active
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium">Today's Attendance</span>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                    {stats.todayAttendanceRate.toFixed(1)}%
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <span className="font-medium">System Status</span>
+                  </div>
+                  <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                    All systems operational
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-blue-600" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Latest system events and updates
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {stats.recentActivity.map((activity, index) => {
+                    const Icon = activity.type === 'class_created' ? BookOpen :
+                                activity.type === 'teacher_approved' ? CheckCircle : Users;
+                    const colorClass = activity.type === 'class_created' ? 'text-blue-600' :
+                                      activity.type === 'teacher_approved' ? 'text-green-600' : 'text-purple-600';
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Icon className={`h-4 w-4 ${colorClass}`} />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{activity.message}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   );

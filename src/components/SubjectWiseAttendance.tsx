@@ -13,7 +13,7 @@ interface SubjectWiseAttendanceProps {
 export function SubjectWiseAttendance({ stats }: SubjectWiseAttendanceProps) {
     return (
         <div className="grid gap-4 md:grid-cols-2">
-            {stats.map(stat => {
+            {stats.map((stat, index) => {
                 const percentage = stat.total > 0 ? Math.round((stat.attended / stat.total) * 100) : 0;
                 
                 let progressColorClass = "bg-green-500";
@@ -28,7 +28,7 @@ export function SubjectWiseAttendance({ stats }: SubjectWiseAttendanceProps) {
                 }
 
                 return (
-                    <Card key={stat.subject} className="p-4 space-y-3">
+                    <Card key={`subject-stat-${index}-${stat.subject}`} className="p-4 space-y-3">
                         <div className="flex justify-between items-start">
                            <div>
                              <h3 className="font-semibold text-base">{stat.subject}</h3>

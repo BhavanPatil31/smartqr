@@ -8,15 +8,15 @@ import { notFound, useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { AttendanceTable } from '@/components/AttendanceTable';
 import { SuspiciousActivityChecker } from '@/components/SuspiciousActivityChecker';
-import { getClassById } from '@/lib/data';
+import { getClassById, generateQRCodeForClass, isQRCodeValid, getQRCodeTimeRemaining, formatTimeRemaining } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock, Calendar as CalendarIcon, Download, MapPin } from 'lucide-react';
+import { Users, QrCode as QrCodeIcon, Cpu, ChevronLeft, Clock, Calendar as CalendarIcon, Download, MapPin, RefreshCw, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Class, AttendanceRecord } from '@/lib/data';
-import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
@@ -34,6 +34,8 @@ export default function TeacherClassPage() {
   const [loading, setLoading] = useState(true);
   const [liveAttendanceRecords, setLiveAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [qrTimeRemaining, setQrTimeRemaining] = useState(0);
   
   // State for historical attendance
   const [historyDate, setHistoryDate] = useState<Date | undefined>(new Date());
@@ -52,9 +54,36 @@ export default function TeacherClassPage() {
 
     const fetchClassData = async () => {
       setLoading(true);
-      const fetchedClass = await getClassById(classId);
-      setClassItem(fetchedClass);
-      setLoading(false);
+      try {
+        // Check if teacher is approved
+        const user = auth.currentUser;
+        if (!user) {
+          toast({ title: "Error", description: "You must be logged in to view class details.", variant: "destructive" });
+          window.location.href = '/teacher/login';
+          return;
+        }
+        
+        const teacherDocRef = doc(db, 'teachers', user.uid);
+        const teacherDocSnap = await getDoc(teacherDocRef);
+        
+        if (teacherDocSnap.exists()) {
+          const teacherData = teacherDocSnap.data();
+          if (teacherData.isApproved !== true) {
+            toast({ title: 'Access Denied', description: 'Your account is pending approval. You cannot access class details until approved by an administrator.', variant: 'destructive' });
+            window.location.href = '/teacher/pending-approval';
+            return;
+          }
+        }
+        
+        // If approved, proceed with fetching class data
+        const fetchedClass = await getClassById(classId);
+        setClassItem(fetchedClass);
+      } catch (error) {
+        console.error("Error fetching class data:", error);
+        toast({ title: "Error", description: "Failed to load class data.", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchClassData();
@@ -65,15 +94,62 @@ export default function TeacherClassPage() {
     if (!classId) return;
     
     const todayStr = format(new Date(), 'yyyy-MM-dd', { timeZone: 'Asia/Kolkata' });
-    const attendanceCollectionRef = collection(db, 'classes', classId, 'attendance', todayStr, 'records');
-    const q = query(attendanceCollectionRef);
+    
+    // First check if the class exists and user has permission
+    const setupListener = async (): Promise<(() => void) | null> => {
+      try {
+        // Verify class exists and user has access
+        const classDocRef = doc(db, 'classes', classId);
+        const classDoc = await getDoc(classDocRef);
+        
+        if (!classDoc.exists()) {
+          console.error('Class not found:', classId);
+          return null;
+        }
+        
+        const classData = classDoc.data();
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser || classData.teacherId !== currentUser.uid) {
+          console.error('Access denied to class:', classId);
+          return null;
+        }
+        
+        // Set up the attendance listener
+        const attendanceCollectionRef = collection(db, 'classes', classId, 'attendance', todayStr, 'records');
+        const q = query(attendanceCollectionRef);
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
-      setLiveAttendanceRecords(records);
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const records = querySnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+          setLiveAttendanceRecords(records);
+        }, (error) => {
+          console.error('Error in attendance listener:', error);
+          // Don't log the error details to avoid console spam for non-existent collections
+          // This is normal when no attendance has been marked yet
+          setLiveAttendanceRecords([]);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error setting up attendance listener:', error);
+        setLiveAttendanceRecords([]);
+        return null;
+      }
+    };
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    setupListener().then((unsub) => {
+      if (unsub) {
+        unsubscribe = unsub;
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [classId]);
   
   const handleFetchHistory = async () => {
@@ -96,6 +172,59 @@ export default function TeacherClassPage() {
     handleFetchHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleGenerateQR = async () => {
+    if (!classId) return;
+    
+    setIsGeneratingQR(true);
+    try {
+      const { qrCode, expiresAt } = await generateQRCodeForClass(classId);
+      
+      // Refresh class data to get updated QR info
+      const updatedClass = await getClassById(classId);
+      setClassItem(updatedClass);
+      
+      toast({
+        title: 'QR Code Generated',
+        description: 'New QR code generated successfully! It will expire in 10 minutes.',
+      });
+    } catch (error: any) {
+      console.error('Error generating QR code:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
+      toast({
+        title: 'Error',
+        description: `Failed to generate QR code: ${errorMessage}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingQR(false);
+    }
+  };
+
+  // Timer to update QR code remaining time
+  useEffect(() => {
+    if (!classItem || !isQRCodeValid(classItem)) {
+      setQrTimeRemaining(0);
+      return;
+    }
+
+    const updateTimer = () => {
+      const remaining = getQRCodeTimeRemaining(classItem);
+      setQrTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        // QR code has expired, refresh class data
+        getClassById(classId).then(updatedClass => {
+          setClassItem(updatedClass);
+        });
+      }
+    };
+
+    updateTimer(); // Initial update
+    const interval = setInterval(updateTimer, 1000); // Update every second
+
+    return () => clearInterval(interval);
+  }, [classItem, classId]);
 
   const handleExport = (records: AttendanceRecord[], date: Date | undefined) => {
     if (records.length === 0) {
@@ -302,27 +431,72 @@ export default function TeacherClassPage() {
           <div className="lg:col-span-1">
             <Card className="gradient-card-2">
               <CardHeader>
-                <div className="flex items-center gap-2">
-                    <QrCodeIcon className="h-5 w-5"/>
-                    <CardTitle>Class QR Code</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                      <QrCodeIcon className="h-5 w-5"/>
+                      <CardTitle>Class QR Code</CardTitle>
+                  </div>
+                  {classItem && isQRCodeValid(classItem) && (
+                    <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      {formatTimeRemaining(qrTimeRemaining)}
+                    </div>
+                  )}
                 </div>
-                <CardDescription className="text-primary-foreground/80">Students can scan this to mark attendance.</CardDescription>
+                <CardDescription className="text-primary-foreground/80">
+                  Students can scan this to mark attendance.
+                  {classItem && !isQRCodeValid(classItem) && (
+                    <span className="flex items-center gap-1 mt-1 text-red-200">
+                      <AlertTriangle className="h-3 w-3" />
+                      QR Code Expired
+                    </span>
+                  )}
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center">
-                 {qrCodeUrl ? (
+                 {qrCodeUrl && classItem && isQRCodeValid(classItem) ? (
                     <div className="p-4 bg-white rounded-lg border">
                         <Image 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrl)}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${qrCodeUrl}?qr=${classItem.qrCode}`)}`}
                             width={200}
                             height={200}
                             alt="Class QR Code"
                             data-ai-hint="QR code"
                         />
                     </div>
+                 ) : classItem && !isQRCodeValid(classItem) ? (
+                    <div className="p-4 bg-gray-100 rounded-lg border border-dashed flex flex-col items-center justify-center h-[216px] w-[216px]">
+                      <AlertTriangle className="h-12 w-12 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 text-center">QR Code Expired</p>
+                      <p className="text-xs text-gray-500 text-center mt-1">Generate a new one</p>
+                    </div>
                  ) : (
                     <Skeleton className="h-[216px] w-[216px]" />
                  )}
-                <p className="mt-4 text-xs text-primary-foreground/70 text-center">This QR code directs students to the attendance page.</p>
+                
+                <div className="mt-4 w-full space-y-2">
+                  <Button 
+                    onClick={handleGenerateQR} 
+                    disabled={isGeneratingQR}
+                    className="w-full"
+                    variant={classItem && isQRCodeValid(classItem) ? "outline" : "default"}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isGeneratingQR ? 'animate-spin' : ''}`} />
+                    {isGeneratingQR ? 'Generating...' : 
+                     classItem && isQRCodeValid(classItem) ? 'Regenerate QR' : 'Generate QR Code'}
+                  </Button>
+                  
+                  {classItem && isQRCodeValid(classItem) && (
+                    <p className="text-xs text-primary-foreground/70 text-center">
+                      QR code expires in {formatTimeRemaining(qrTimeRemaining)}
+                    </p>
+                  )}
+                  
+                  {classItem && !isQRCodeValid(classItem) && (
+                    <p className="text-xs text-red-200 text-center">
+                      Generate a new QR code to allow student attendance
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

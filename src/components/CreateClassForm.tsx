@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { generateQRCodeForClass } from '@/lib/data';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useRouter } from 'next/navigation';
 
@@ -32,7 +33,7 @@ import { cn } from '@/lib/utils';
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const scheduleSchema = z.object({
   day: z.string().min(1, "Please select a day."),
@@ -89,8 +90,16 @@ export function CreateClassForm() {
         throw new Error("Teacher profile not found.");
       }
       const teacherProfile = teacherDocSnap.data() as TeacherProfile;
+      
+      // Check if the teacher is approved
+      if (teacherProfile.isApproved !== true) {
+        toast({ title: 'Access Denied', description: 'Your account is pending approval. You cannot create classes until approved by an administrator.', variant: 'destructive' });
+        router.push('/teacher/pending-approval');
+        return;
+      }
 
-      await addDoc(collection(db, 'classes'), {
+      // Create the class document first
+      const classDocRef = await addDoc(collection(db, 'classes'), {
         subject: values.subject,
         department: values.department,
         semester: values.semester,
@@ -101,7 +110,22 @@ export function CreateClassForm() {
         createdAt: serverTimestamp(),
       });
       
-      toast({ title: 'Success', description: `Class "${values.subject}" created successfully!` });
+      // Generate QR code for the newly created class
+      try {
+        const { qrCode, expiresAt } = await generateQRCodeForClass(classDocRef.id);
+        toast({ 
+          title: 'Success', 
+          description: `Class "${values.subject}" created successfully with QR code! QR code expires in 10 minutes.` 
+        });
+      } catch (qrError) {
+        console.error('Error generating QR code:', qrError);
+        toast({ 
+          title: 'Class Created', 
+          description: `Class "${values.subject}" created successfully, but QR code generation failed. You can generate it later.`,
+          variant: 'destructive'
+        });
+      }
+      
       router.push('/teacher/dashboard');
       form.reset();
     } catch (error) {

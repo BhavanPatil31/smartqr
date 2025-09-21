@@ -5,19 +5,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Header } from '@/components/Header';
 import { ClassCard } from '@/components/ClassCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { User, PlusCircle, LogOut } from 'lucide-react';
-import type { Class } from '@/lib/data';
+import { User, PlusCircle, LogOut, Settings } from 'lucide-react';
+import type { Class, TeacherProfile } from '@/lib/data';
 
 export default function TeacherDashboard() {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
   const [classes, setClasses] = useState<Class[]>([]);
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
 
   useEffect(() => {
@@ -25,6 +26,27 @@ export default function TeacherDashboard() {
       router.push('/teacher/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const checkApprovalStatus = async () => {
+      if (user) {
+        try {
+          const teacherDoc = await getDoc(doc(db, 'teachers', user.uid));
+          if (teacherDoc.exists()) {
+            const teacherData = teacherDoc.data() as TeacherProfile;
+            setTeacherProfile(teacherData);
+            if (teacherData.isApproved === false) {
+              router.push('/teacher/pending-approval');
+            }
+          }
+        } catch (error) {
+          console.error("Error checking approval status:", error);
+        }
+      }
+    };
+    
+    checkApprovalStatus();
+  }, [user, router]);
 
   useEffect(() => {
     if (user) {
@@ -73,15 +95,12 @@ export default function TeacherDashboard() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Header>
-          <Button asChild variant="outline" size="sm">
-              <Link href="/teacher/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-          </Button>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-          </Button>
-      </Header>
+      <Header 
+        onLogout={handleLogout} 
+        user={user}
+        userType="teacher"
+        userProfile={teacherProfile}
+      />
       <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center justify-between">
             <div>

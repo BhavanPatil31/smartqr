@@ -3,15 +3,18 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Camera, CheckCircle, XCircle, AlertCircle, Keyboard } from 'lucide-react';
 import type { Class, Schedule } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { isQRCodeValid } from '@/lib/data';
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { format, toDate } from 'date-fns-tz';
 import jsQR from 'jsqr';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { MobileCameraTroubleshooting } from '@/components/MobileCameraTroubleshooting';
 
 // Helper function to check if current time is within any of the class schedules in IST
 const isClassTime = (schedules: Schedule[]) => {
@@ -42,12 +45,16 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
   
-  const [status, setStatus] = useState<'idle' | 'scanning' | 'verifying' | 'success' | 'failure' | 'already_marked' | 'wrong_qr' | 'not_class_time'>('idle');
+  const [status, setStatus] = useState<'idle' | 'scanning' | 'verifying' | 'success' | 'failure' | 'already_marked' | 'wrong_qr' | 'not_class_time' | 'qr_expired'>('idle');
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [cameraError, setCameraError] = useState<string>('');
+  const [isHttps, setIsHttps] = useState(true);
   
   const stopScan = useCallback(() => {
     if (animationFrameId.current) {
@@ -66,11 +73,16 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
     stopScan();
     
     let scannedClassId = '';
+    let scannedQRCode = '';
+    
     try {
         const url = new URL(scannedData);
         const pathParts = url.pathname.split('/');
         if (pathParts[1] === 'student' && pathParts[2] === 'class' && pathParts[3]) {
             scannedClassId = pathParts[3];
+            // Extract QR code from URL parameters
+            const urlParams = new URLSearchParams(url.search);
+            scannedQRCode = urlParams.get('qr') || '';
         }
     } catch (e) {
         scannedClassId = scannedData;
@@ -78,6 +90,18 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
 
     if (scannedClassId !== classItem.id) {
         setStatus('wrong_qr');
+        return;
+    }
+
+    // Check if QR code is valid and not expired
+    if (!isQRCodeValid(classItem)) {
+        setStatus('qr_expired');
+        return;
+    }
+
+    // Verify the scanned QR code matches the current class QR code
+    if (scannedQRCode && classItem.qrCode && scannedQRCode !== classItem.qrCode) {
+        setStatus('qr_expired');
         return;
     }
 
@@ -190,22 +214,98 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
   const startScan = async () => {
     setStatus('scanning');
     setHasCameraPermission(null);
+    setCameraError('');
+    
+    // Check if we're on HTTPS (required for camera access on mobile)
+    const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    setIsHttps(isSecure);
+    
+    if (!isSecure) {
+      setCameraError('Camera access requires HTTPS. Please use a secure connection.');
+      setHasCameraPermission(false);
+      setStatus('failure');
+      return;
+    }
+    
+    // Check if mediaDevices is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera access is not supported in this browser.');
+      setHasCameraPermission(false);
+      setStatus('failure');
+      return;
+    }
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      // Try multiple camera configurations for better mobile compatibility
+      let stream;
+      const constraints = [
+        // Prefer back camera on mobile
+        { video: { facingMode: { exact: 'environment' } } },
+        // Fallback to any back camera
+        { video: { facingMode: 'environment' } },
+        // Fallback to any camera
+        { video: true },
+        // Last resort with basic constraints
+        { video: { width: { min: 640 }, height: { min: 480 } } }
+      ];
+      
+      for (const constraint of constraints) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraint);
+          break;
+        } catch (err) {
+          console.log('Failed with constraint:', constraint, err);
+          continue;
+        }
+      }
+      
+      if (!stream) {
+        throw new Error('Unable to access camera with any configuration');
+      }
+      
       setHasCameraPermission(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        // Add event listeners for better mobile support
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        await videoRef.current.play();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing camera:', error);
       setHasCameraPermission(false);
       setStatus('failure');
+      
+      let errorMessage = 'Unable to access camera. ';
+      let errorTitle = 'Camera Access Error';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorTitle = 'Camera Permission Denied';
+        errorMessage = 'Please allow camera access in your browser settings. On mobile, you may need to refresh the page after granting permission.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = 'No camera found on this device.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = 'Camera is being used by another application. Please close other apps using the camera and try again.';
+      } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+        errorMessage = 'Camera does not meet the required specifications. Try using a different camera or device.';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'Camera access is not supported in this browser. Try using Chrome, Firefox, or Safari.';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Camera access was aborted. Please try again.';
+      }
+      
+      setCameraError(errorMessage);
       toast({
         variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings.',
+        title: errorTitle,
+        description: errorMessage,
       });
+    }
+  };
+
+  const handleManualSubmit = () => {
+    if (manualCode.trim()) {
+      verifyAndMarkAttendance(manualCode.trim());
     }
   };
   
@@ -220,9 +320,11 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
                     <canvas ref={canvasRef} className="hidden" />
                     {hasCameraPermission === false && (
                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                            <Alert variant="destructive" className="w-4/5">
+                            <Alert variant="destructive" className="w-4/5 max-h-32 overflow-y-auto">
                                 <AlertTitle>Camera Access Required</AlertTitle>
-                                <AlertDescription>Please allow camera access.</AlertDescription>
+                                <AlertDescription className="text-xs">
+                                  {cameraError || 'Please allow camera access and refresh the page.'}
+                                </AlertDescription>
                             </Alert>
                         </div>
                     )}
@@ -243,15 +345,48 @@ export function ClassAttendanceScanner({ classItem }: { classItem: Class }) {
             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Class Not In Session</AlertTitle><AlertDescription>You can only mark attendance during scheduled class hours.</AlertDescription></Alert>;
         case 'wrong_qr':
              return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Wrong QR Code</AlertTitle><AlertDescription>This QR code is not for {classItem.subject}. <Button variant="link" className="p-0 h-auto" onClick={() => setStatus('idle')}>Try Again</Button></AlertDescription></Alert>;
+        case 'qr_expired':
+             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>QR Code Expired</AlertTitle><AlertDescription>This QR code has expired. Please ask your teacher to generate a new one. <Button variant="link" className="p-0 h-auto" onClick={() => setStatus('idle')}>Try Again</Button></AlertDescription></Alert>;
         case 'failure':
             return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>Something went wrong. Please try again. <Button variant="link" className="p-0 h-auto" onClick={() => setStatus('idle')}>Retry</Button></AlertDescription></Alert>;
         case 'idle':
         default:
             return (
-                <div className="flex flex-col items-center space-y-2">
-                    <Button onClick={startScan} disabled={isButtonDisabled} size="lg" className="w-64">
+                <div className="flex flex-col items-center space-y-4 w-full max-w-md">
+                    <Button onClick={startScan} disabled={isButtonDisabled} size="lg" className="w-full">
                         <Camera className="mr-2" /> Scan to Mark Attendance
                     </Button>
+                    
+                    {hasCameraPermission === false && (
+                        <div className="w-full space-y-4">
+                            <MobileCameraTroubleshooting 
+                                error={cameraError}
+                                onRetry={() => setStatus('idle')}
+                                showRetryButton={true}
+                            />
+                            
+                            <div className="text-center text-sm text-muted-foreground mb-3">
+                                Camera not working? Try manual entry:
+                            </div>
+                            <div className="space-y-2">
+                                <Input
+                                    placeholder="Enter QR code manually"
+                                    value={manualCode}
+                                    onChange={(e) => setManualCode(e.target.value)}
+                                    className="w-full"
+                                />
+                                <Button 
+                                    onClick={handleManualSubmit} 
+                                    disabled={!manualCode.trim() || isButtonDisabled}
+                                    variant="outline" 
+                                    className="w-full"
+                                >
+                                    <Keyboard className="mr-2 h-4 w-4" />
+                                    Submit Code
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )
     }

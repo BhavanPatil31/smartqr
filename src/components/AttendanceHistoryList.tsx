@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { StudentHistoryRecord } from '@/ai/flows/get-student-history';
+import type { StudentHistoryRecord } from '@/lib/client-stats';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatTime } from '@/lib/utils';
@@ -27,34 +27,36 @@ export function AttendanceHistoryList({ records }: AttendanceHistoryListProps) {
 
     return (
         <div className="space-y-3">
-            {sortedRecords.map((record, index) => (
-                <Card key={index} className="flex items-center justify-between p-4 transition-all hover:shadow-md hover:border-primary/50">
-                    <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-3">
-                           <h3 className="font-semibold text-base">{record.subject}</h3>
-                           <Badge variant={record.status === 'Present' ? 'default' : 'destructive'}
-                                  className={cn(record.status === 'Present' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200', 'font-medium')}
-                           >
-                            {record.status}
-                           </Badge>
+            {sortedRecords.map((record, index) => {
+                const status = record.attended ? 'Present' : 'Absent' as const;
+                return (
+                    <Card key={`attendance-record-${record.classId}-${record.date}-${index}`} className="flex items-center justify-between p-4 transition-all hover:shadow-md hover:border-primary/50">
+                        <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-3">
+                               <h3 className="font-semibold text-base">{record.subject}</h3>
+                               <Badge variant={status === 'Present' ? 'default' : 'destructive'}
+                                      className={cn(status === 'Present' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200', 'font-medium')}
+                               >
+                                {status}
+                               </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-1.5">
+                                <p className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {formatDate(new Date(record.date), 'EEE, MMM d, yyyy')}</p>
+                                {/* Optional fields below may not exist; render only if available via future enhancements */}
+                            </div>
+                            {status === 'Present' && record.timestamp && (
+                               <p className="text-xs text-green-600">Marked at: {formatDate(new Date(record.timestamp), 'hh:mm a')}</p>
+                            )}
                         </div>
-                        <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-1.5">
-                            <p className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {formatDate(new Date(record.date), 'EEE, MMM d, yyyy')}</p>
-                            <p className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {formatTime(record.startTime)} - {formatTime(record.endTime)}</p>
-                            <p className="flex items-center gap-1.5"><User className="h-4 w-4" /> {record.teacherName}</p>
+                        <div className="pl-4">
+                            {status === 'Present' 
+                                ? <CheckCircle className="h-6 w-6 text-green-500" />
+                                : <XCircle className="h-6 w-6 text-red-500" />
+                            }
                         </div>
-                        {record.status === 'Present' && record.markedAt && (
-                           <p className="text-xs text-green-600">Marked at: {formatDate(new Date(record.markedAt), 'hh:mm a')}</p>
-                        )}
-                    </div>
-                    <div className="pl-4">
-                        {record.status === 'Present' 
-                            ? <CheckCircle className="h-6 w-6 text-green-500" />
-                            : <XCircle className="h-6 w-6 text-red-500" />
-                        }
-                    </div>
-                </Card>
-            ))}
+                    </Card>
+                );
+            })}
         </div>
     )
 }

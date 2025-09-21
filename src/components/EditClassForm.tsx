@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -23,13 +23,12 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Calendar, Clock, Edit, MapPin, Plus, Trash, Users } from 'lucide-react';
-import { updateClassAction } from '@/lib/actions';
 import type { Class } from '@/lib/data';
 import { Skeleton } from './ui/skeleton';
 
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Biotechnology"];
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const scheduleSchema = z.object({
   day: z.string().min(1, "Please select a day."),
@@ -67,22 +66,50 @@ export function EditClassForm({ classId }: { classId: string }) {
   useEffect(() => {
     const fetchClassData = async () => {
         setIsLoading(true);
-        const classDocRef = doc(db, 'classes', classId);
-        const classSnap = await getDoc(classDocRef);
-        if (classSnap.exists()) {
-            const classData = classSnap.data() as Class;
-            form.reset({
-                subject: classData.subject,
-                department: classData.department,
-                semester: classData.semester,
-                schedules: classData.schedules || [{ day: '', startTime: '', endTime: '', roomNumber: '' }],
-                maxStudents: classData.maxStudents || undefined,
-            });
-        } else {
-            toast({ title: "Error", description: "Class not found.", variant: "destructive" });
+        try {
+            // First check if the teacher is approved
+            const user = auth.currentUser;
+            if (!user) {
+                toast({ title: "Error", description: "You must be logged in to edit a class.", variant: "destructive" });
+                router.push('/teacher/login');
+                return;
+            }
+            
+            const teacherDocRef = doc(db, 'teachers', user.uid);
+            const teacherDocSnap = await getDoc(teacherDocRef);
+            
+            if (teacherDocSnap.exists()) {
+                const teacherData = teacherDocSnap.data();
+                if (teacherData.isApproved !== true) {
+                    toast({ title: 'Access Denied', description: 'Your account is pending approval. You cannot edit classes until approved by an administrator.', variant: 'destructive' });
+                    router.push('/teacher/pending-approval');
+                    return;
+                }
+            }
+            
+            // If approved, proceed with fetching class data
+            const classDocRef = doc(db, 'classes', classId);
+            const classSnap = await getDoc(classDocRef);
+            if (classSnap.exists()) {
+                const classData = classSnap.data() as Class;
+                form.reset({
+                    subject: classData.subject,
+                    department: classData.department,
+                    semester: classData.semester,
+                    schedules: classData.schedules || [{ day: '', startTime: '', endTime: '', roomNumber: '' }],
+                    maxStudents: classData.maxStudents || undefined,
+                });
+            } else {
+                toast({ title: "Error", description: "Class not found.", variant: "destructive" });
+                router.push('/teacher/dashboard');
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            toast({ title: "Error", description: "Failed to load class data.", variant: "destructive" });
             router.push('/teacher/dashboard');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
     fetchClassData();
   }, [classId, form, router, toast]);
@@ -96,7 +123,27 @@ export function EditClassForm({ classId }: { classId: string }) {
   const handleUpdateClass = async (values: ClassFormValues) => {
     setIsSaving(true);
     try {
-        await updateClassAction(classId, values);
+        const classDocRef = doc(db, 'classes', classId);
+        
+        // Clean the data before updating
+        const cleanedData: any = { ...values };
+        Object.keys(cleanedData).forEach(key => {
+            if (cleanedData[key] === undefined) {
+                delete cleanedData[key];
+            }
+        });
+        
+        // Only set maxStudents if it's a valid positive number
+        if (
+            cleanedData.maxStudents === undefined ||
+            isNaN(Number(cleanedData.maxStudents)) ||
+            Number(cleanedData.maxStudents) === 0 ||
+            cleanedData.maxStudents === ''
+        ) {
+            delete cleanedData.maxStudents;
+        }
+
+        await updateDoc(classDocRef, cleanedData);
         toast({ title: 'Success', description: `Class "${values.subject}" updated successfully!` });
         router.push('/teacher/dashboard');
     } catch (error) {

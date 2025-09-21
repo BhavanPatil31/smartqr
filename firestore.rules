@@ -36,31 +36,61 @@ service cloud.firestore {
 
     // Profile Rules: Users can manage their own profile.
     match /students/{studentId} {
+      // Student can read/write their own profile
       allow read, write: if isOwner(studentId);
+      // Admins can read students in their department
+      allow read: if isAdmin() && 'department' in getAdminData() && resource.data.department == getAdminData().department;
+      // Teachers can read student profiles to send messages and view their students
+      allow read, list: if isTeacher();
+
+      // Document creation allowed for signed-in students (registration)
+      allow create: if isSignedIn() && isOwner(studentId);
     }
     match /teachers/{teacherId} {
-      allow read, write: if isOwner(teacherId);
+      // Teacher can read/write their own profile
+      allow read: if isOwner(teacherId);
+      // Allow teachers to edit their own profile and request approval
+      allow update, delete: if isOwner(teacherId);
+
+      // Admins can read teachers (relaxed for smoother admin ops)
+      allow read: if isAdmin();
+
+      // Admins can update teacher docs (e.g., approve). Keep simple to avoid false denials
+      allow update: if isAdmin();
+
+      // Document creation allowed for signed-in teachers (registration)
+      allow create: if isSignedIn() && isOwner(teacherId);
     }
     match /admins/{adminId} {
       allow read, write: if isOwner(adminId);
     }
 
+    // Settings Rules: Users can manage their own settings
+    match /studentSettings/{studentId} {
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
+    }
+    match /teacherSettings/{teacherId} {
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+    }
+    match /adminSettings/{adminId} {
+      allow read, write: if request.auth != null && request.auth.uid == adminId;
+    }
+
     // Class Rules
     match /classes/{classId} {
       // Student Access: A student can read a class if their profile is complete and matches the class.
-      allow get: if isStudent() &&
-                   'department' in getStudentData() && 'semester' in getStudentData() &&
-                   resource.data.department == getStudentData().department &&
-                   resource.data.semester == getStudentData().semester;
+      allow get, list: if isStudent() &&
+                         'department' in getStudentData() && 'semester' in getStudentData() &&
+                         resource.data.department == getStudentData().department &&
+                         resource.data.semester == getStudentData().semester;
       
       // Teacher Access: A teacher has full read/write access to a class they own.
-      // This is the primary fix. Combining read and write (update, delete) into one rule
-      // ensures that the preliminary read required for a conditional write/delete is always allowed.
+      // This includes QR code generation and updates
       allow read, write: if isTeacher() && resource.data.teacherId == request.auth.uid;
       
-      // Admin Access: An admin has full read/write access to any class in their department.
-      // This also consolidates permissions for admins for clarity and correctness.
-      allow read, write: if isAdmin() && resource.data.department == getAdminData().department;
+      // Admin Access: Allow admins to read classes in their department; allow write as needed
+      allow read: if isAdmin() && resource.data.department == getAdminData().department;
+      allow update, delete: if isAdmin() && resource.data.department == getAdminData().department;
 
       // Class Creation: Any teacher can create a class.
       allow create: if isTeacher();
@@ -68,26 +98,63 @@ service cloud.firestore {
       // Listing Classes: Allow any signed-in user to list classes.
       // The application will filter these on the client-side based on the user's role and profile.
       allow list: if isSignedIn();
+      
+      // Server-side access: Allow server-side operations (for AI flows and server actions)
+      // This allows unauthenticated server-side operations
+      allow read: if request.auth == null;
 
       // Attendance Subcollection Rules
-      match /attendance/{date}/records/{recordId} {
-        // A student can create their own attendance record if they are enrolled in the class.
-        allow create: if isStudent() &&
-                      request.resource.data.studentId == request.auth.uid &&
-                      'department' in getStudentData() && 'semester' in getStudentData() &&
-                      get(/databases/$(database)/documents/classes/$(classId)).data.department == getStudentData().department &&
-                      get(/databases/$(database)/documents/classes/$(classId)).data.semester == getStudentData().semester;
+      match /attendance/{date} {
+        // Allow teachers to list attendance collections for their classes (even if empty)
+        allow read, list: if isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
         
-        // Reading records is allowed for the student who owns it, the teacher of the class, or an admin of the department.
-        allow read: if (isStudent() && resource.data.studentId == request.auth.uid) ||
-                      (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
-                      (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == getAdminData().department);
+        match /records/{recordId} {
+          // Students can write their own attendance record
+          allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+          
+          // Students can read their own attendance record
+          // Teachers can read attendance records for their class
+          // Admins can read attendance records for classes in their department
+          allow read, list: if (isStudent() && resource.data.studentId == request.auth.uid) ||
+                              (isTeacher() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) ||
+                              (isAdmin() && get(/databases/$(database)/documents/classes/$(classId)).data.department == getAdminData().department) ||
+                              (request.auth == null); // Server-side access
+        }
       }
     }
 
     // Allow collection group query for a student to read their own records across all classes.
     match /{path=**}/records/{recordId} {
-        allow read: if isStudent() && resource.data.studentId == request.auth.uid;
+        allow read, list: if isStudent() && resource.data.studentId == request.auth.uid;
+    }
+    
+    // Allow teachers to read attendance records for their classes via collection group queries
+    match /{path=**}/records/{recordId} {
+        allow read, list: if isTeacher();
+    }
+    
+    // Allow students to query attendance records in any class for their own records
+    match /{path=**}/attendance/{date}/records/{recordId} {
+        allow read, list: if isStudent() && resource.data.studentId == request.auth.uid;
     }
   }
+
+  // Notifications Rules
+  match /notifications/{notificationId} {
+    // Students can read and list their own notifications
+    allow read, list: if request.auth != null && resource.data.studentId == request.auth.uid;
+    
+    // Teachers can read notifications they created
+    allow read, list: if request.auth != null && isTeacher() && resource.data.teacherId == request.auth.uid;
+    
+    // Students can update their own notifications (mark as read/unread)
+    allow update: if request.auth != null && resource.data.studentId == request.auth.uid;
+    
+    // Teachers can create notifications for students - simplified permission
+    allow create: if request.auth != null;
+    
+    // Students can delete their own notifications
+    allow delete: if request.auth != null && resource.data.studentId == request.auth.uid;
+  }
+
 }

@@ -11,7 +11,8 @@ import { QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 
@@ -46,12 +47,34 @@ export function AuthForm({ userType }: AuthFormProps) {
         return;
       }
       try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        toast({
-          title: 'Success',
-          description: 'Account created! Redirecting to dashboard...',
-        });
-        router.push(`/${userType}/dashboard`);
+        // Create the user account
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // For teacher accounts, create a profile with approval status
+        if (userType === 'teacher') {
+          await setDoc(doc(db, 'teachers', userCredential.user.uid), {
+            email: email,
+            fullName: '',
+            phoneNumber: '',
+            department: '',
+            isApproved: false,
+            isApprovalRequested: false,
+            registeredAt: Date.now()
+          });
+          
+          toast({
+            title: 'Account Created',
+            description: 'Please complete your profile and submit for approval.',
+          });
+          router.push(`/${userType}/profile`);
+        } else {
+          // For non-teacher accounts, proceed as normal
+          toast({
+            title: 'Success',
+            description: 'Account created! Redirecting to dashboard...',
+          });
+          router.push(`/${userType}/dashboard`);
+        }
       } catch (error: any) {
         toast({
           title: 'Registration Failed',
@@ -61,7 +84,33 @@ export function AuthForm({ userType }: AuthFormProps) {
       }
     } else { // Login
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        
+        // For teacher accounts, check approval status
+        if (userType === 'teacher') {
+          const teacherDoc = await getDoc(doc(db, 'teachers', userCredential.user.uid));
+          
+          if (teacherDoc.exists()) {
+            const teacherData = teacherDoc.data();
+            const requested = Boolean((teacherData as any).isApprovalRequested);
+            if (teacherData.isApproved === false && requested) {
+              toast({
+                title: 'Account Pending Approval',
+                description: 'Your account is still pending admin approval.',
+                variant: 'default',
+              });
+              router.push(`/${userType}/pending-approval`);
+              setIsLoading(false);
+              return;
+            } else if (teacherData.isApproved === false && !requested) {
+              // Not requested yet; send to profile to complete and request approval
+              router.push(`/${userType}/profile`);
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+        
         toast({
           title: 'Login Successful!',
           description: 'Redirecting to your dashboard...',
