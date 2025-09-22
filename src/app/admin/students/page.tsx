@@ -52,6 +52,63 @@ export default function AdminStudentsPage() {
   const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
+  // Background function to load student stats without blocking UI
+  const loadStudentStatsInBackground = async (studentsData: (StudentProfile & { id: string })[]) => {
+    // Process students in batches to avoid overwhelming the system
+    const BATCH_SIZE = 5;
+    
+    for (let i = 0; i < studentsData.length; i += BATCH_SIZE) {
+      const batch = studentsData.slice(i, i + BATCH_SIZE);
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(async (student) => {
+        try {
+          const stats = await calculateStudentAttendanceStats(student.id);
+          return {
+            studentId: student.id,
+            stats: {
+              attendanceRate: stats.attendanceRate,
+              totalClasses: stats.totalClasses,
+              attendedClasses: stats.attendedClasses
+            }
+          };
+        } catch (error) {
+          console.error(`Error calculating stats for student ${student.id}:`, error);
+          return {
+            studentId: student.id,
+            stats: {
+              attendanceRate: 0,
+              totalClasses: 0,
+              attendedClasses: 0
+            }
+          };
+        }
+      });
+      
+      // Wait for batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Update students state with the new stats
+      setStudents(prevStudents => 
+        prevStudents.map(student => {
+          const result = batchResults.find(r => r.studentId === student.id);
+          if (result) {
+            return {
+              ...student,
+              ...result.stats
+            };
+          }
+          return student;
+        })
+      );
+      
+      // Small delay between batches to prevent overwhelming Firestore
+      if (i + BATCH_SIZE < studentsData.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/admin/login');
@@ -92,31 +149,19 @@ export default function AdminStudentsPage() {
           ...doc.data() 
         } as StudentProfile & { id: string }));
         
-        // Calculate attendance stats for each student
-        const studentsWithStats = await Promise.all(
-          studentsData.map(async (student) => {
-            try {
-              const stats = await calculateStudentAttendanceStats(student.id);
-              return {
-                ...student,
-                attendanceRate: stats.attendanceRate,
-                totalClasses: stats.totalClasses,
-                attendedClasses: stats.attendedClasses
-              } as StudentWithStats;
-            } catch (error) {
-              console.error(`Error calculating stats for student ${student.id}:`, error);
-              return {
-                ...student,
-                attendanceRate: 0,
-                totalClasses: 0,
-                attendedClasses: 0
-              } as StudentWithStats;
-            }
-          })
-        );
+        // First, set students without stats for immediate display
+        const studentsWithoutStats: StudentWithStats[] = studentsData.map(student => ({
+          ...student,
+          attendanceRate: undefined,
+          totalClasses: undefined,
+          attendedClasses: undefined
+        }));
         
-        setStudents(studentsWithStats);
+        setStudents(studentsWithoutStats);
         setIsLoadingStudents(false);
+        
+        // Then, load stats in the background (non-blocking)
+        loadStudentStatsInBackground(studentsData);
       }, (error) => {
         console.error("Error fetching students:", error);
         setIsLoadingStudents(false);
@@ -169,6 +214,7 @@ export default function AdminStudentsPage() {
   };
 
   // Calculate statistics
+  const studentsWithStats = students.filter(s => s.attendanceRate !== undefined);
   const stats = {
     totalStudents: students.length,
     semesterBreakdown: SEMESTERS.reduce((acc, semester) => {
@@ -176,13 +222,13 @@ export default function AdminStudentsPage() {
       return acc;
     }, {} as Record<string, number>),
     attendanceBreakdown: {
-      excellent: students.filter(s => (s.attendanceRate || 0) >= 90).length,
-      good: students.filter(s => (s.attendanceRate || 0) >= 75 && (s.attendanceRate || 0) < 90).length,
-      warning: students.filter(s => (s.attendanceRate || 0) >= 60 && (s.attendanceRate || 0) < 75).length,
-      critical: students.filter(s => (s.attendanceRate || 0) < 60).length,
+      excellent: studentsWithStats.filter(s => s.attendanceRate! >= 90).length,
+      good: studentsWithStats.filter(s => s.attendanceRate! >= 75 && s.attendanceRate! < 90).length,
+      warning: studentsWithStats.filter(s => s.attendanceRate! >= 60 && s.attendanceRate! < 75).length,
+      critical: studentsWithStats.filter(s => s.attendanceRate! < 60).length,
     },
-    averageAttendance: students.length > 0 
-      ? students.reduce((sum, s) => sum + (s.attendanceRate || 0), 0) / students.length 
+    averageAttendance: studentsWithStats.length > 0 
+      ? studentsWithStats.reduce((sum, s) => sum + s.attendanceRate!, 0) / studentsWithStats.length 
       : 0
   };
 
@@ -354,7 +400,9 @@ export default function AdminStudentsPage() {
         {filteredStudents.length > 0 ? (
           <div className="space-y-4">
             {filteredStudents.map((student) => {
-              const status = getAttendanceStatus(student.attendanceRate || 0);
+              const status = student.attendanceRate !== undefined 
+                ? getAttendanceStatus(student.attendanceRate) 
+                : { label: 'Loading', color: 'bg-gray-100 text-gray-800', icon: TrendingUp };
               const StatusIcon = status.icon;
               
               return (
@@ -395,12 +443,25 @@ export default function AdminStudentsPage() {
                       </div>
                       
                       <div className="text-right">
-                        <div className="text-2xl font-bold">
-                          {(student.attendanceRate || 0).toFixed(1)}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {student.attendedClasses || 0}/{student.totalClasses || 0} classes
-                        </div>
+                        {student.attendanceRate !== undefined ? (
+                          <>
+                            <div className="text-2xl font-bold">
+                              {student.attendanceRate.toFixed(1)}%
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {student.attendedClasses || 0}/{student.totalClasses || 0} classes
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-2xl font-bold text-muted-foreground">
+                              Loading...
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Calculating stats
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </CardContent>
