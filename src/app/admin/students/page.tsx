@@ -35,6 +35,7 @@ import { calculateStudentAttendanceStats } from '@/lib/data';
 const SEMESTERS = ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"];
 
 interface StudentWithStats extends StudentProfile {
+  id: string;
   attendanceRate?: number;
   totalClasses?: number;
   attendedClasses?: number;
@@ -89,7 +90,7 @@ export default function AdminStudentsPage() {
         const studentsData = querySnapshot.docs.map(doc => ({ 
           id: doc.id, 
           ...doc.data() 
-        } as StudentProfile));
+        } as StudentProfile & { id: string }));
         
         // Calculate attendance stats for each student
         const studentsWithStats = await Promise.all(
