@@ -139,26 +139,49 @@ service cloud.firestore {
                             exists(/databases/$(database)/documents/students/$(request.auth.uid)) && 
                             resource.data.studentId == request.auth.uid;
     }
-  }
 
-  // Notifications Rules
-  match /notifications/{notificationId} {
-    // Students can read and list their own notifications
-    allow read, list: if request.auth != null && resource.data.studentId == request.auth.uid;
-    
-    // Teachers can read notifications they created
-    allow read, list: if request.auth != null && 
-                        exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && 
-                        resource.data.teacherId == request.auth.uid;
-    
-    // Students can update their own notifications (mark as read/unread)
-    allow update: if request.auth != null && resource.data.studentId == request.auth.uid;
-    
-    // Teachers can create notifications for students
-    allow create: if request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    
-    // Students can delete their own notifications
-    allow delete: if request.auth != null && resource.data.studentId == request.auth.uid;
-  }
+    // Notifications Rules
+    match /notifications/{notificationId} {
+      // Students can read and list their own notifications
+      allow read, list: if request.auth != null && resource.data.studentId == request.auth.uid;
+      
+      // Teachers can read notifications they created
+      allow read, list: if request.auth != null && 
+                          exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && 
+                          resource.data.teacherId == request.auth.uid;
+      
+      // Students can update their own notifications (mark as read/unread)
+      allow update: if request.auth != null && resource.data.studentId == request.auth.uid;
+      
+      // Teachers can create notifications for students
+      allow create: if request.auth != null && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      
+      // Students can delete their own notifications
+      allow delete: if request.auth != null && resource.data.studentId == request.auth.uid;
+    }
 
+    // MESSAGES: Teacher <-> Student
+    match /messages/{messageId} {
+      // Teachers can send messages to students
+      allow create: if request.auth != null
+                    && exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
+                    && request.resource.data.studentId is string
+                    && exists(/databases/$(database)/documents/students/$(request.resource.data.studentId));
+      
+      // Students can read messages sent to them
+      allow read, list: if request.auth != null
+                        && exists(/databases/$(database)/documents/students/$(request.auth.uid))
+                        && resource.data.studentId == request.auth.uid;
+      
+      // Students can update (e.g., mark as read) or delete their own messages
+      allow update, delete: if request.auth != null
+                            && exists(/databases/$(database)/documents/students/$(request.auth.uid))
+                            && resource.data.studentId == request.auth.uid;
+
+      // Teachers can update or delete messages they've sent (optional)
+      allow update, delete: if request.auth != null
+                            && exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
+                            && resource.data.teacherId == request.auth.uid;
+    }
+  }
 }

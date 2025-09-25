@@ -66,14 +66,21 @@ service cloud.firestore {
     }
 
     // Settings Rules: Users can manage their own settings
+    // Allow any authenticated user to read/write their own settings document
     match /studentSettings/{studentId} {
-      allow read, write: if request.auth != null && request.auth.uid == studentId;
+      allow read, write: if isSignedIn() && isOwner(studentId);
+      // Also allow creation during registration
+      allow create: if isSignedIn() && isOwner(studentId);
     }
     match /teacherSettings/{teacherId} {
-      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      allow read, write: if isSignedIn() && isOwner(teacherId);
+      // Also allow creation during registration
+      allow create: if isSignedIn() && isOwner(teacherId);
     }
     match /adminSettings/{adminId} {
-      allow read, write: if request.auth != null && request.auth.uid == adminId;
+      allow read, write: if isSignedIn() && isOwner(adminId);
+      // Also allow creation during registration
+      allow create: if isSignedIn() && isOwner(adminId);
     }
 
     // Class Rules
@@ -137,24 +144,23 @@ service cloud.firestore {
     match /{path=**}/attendance/{date}/records/{recordId} {
         allow read, list: if isStudent() && resource.data.studentId == request.auth.uid;
     }
-  }
 
-  // Notifications Rules
-  match /notifications/{notificationId} {
-    // Students can read and list their own notifications
-    allow read, list: if request.auth != null && resource.data.studentId == request.auth.uid;
-    
-    // Teachers can read notifications they created
-    allow read, list: if request.auth != null && isTeacher() && resource.data.teacherId == request.auth.uid;
-    
-    // Students can update their own notifications (mark as read/unread)
-    allow update: if request.auth != null && resource.data.studentId == request.auth.uid;
-    
-    // Teachers can create notifications for students - simplified permission
-    allow create: if request.auth != null;
-    
-    // Students can delete their own notifications
-    allow delete: if request.auth != null && resource.data.studentId == request.auth.uid;
+    // Notifications Rules
+    match /notifications/{notificationId} {
+      // Students can read and list their own notifications
+      allow read, list: if request.auth != null && resource.data.studentId == request.auth.uid;
+      
+      // Teachers can read notifications they created
+      allow read, list: if request.auth != null && isTeacher() && resource.data.teacherId == request.auth.uid;
+      
+      // Students can update their own notifications (mark as read/unread)
+      allow update: if request.auth != null && resource.data.studentId == request.auth.uid;
+      
+      // Teachers can create notifications for students - simplified permission
+      allow create: if request.auth != null;
+      
+      // Students can delete their own notifications
+      allow delete: if request.auth != null && resource.data.studentId == request.auth.uid;
+    }
   }
-
 }
