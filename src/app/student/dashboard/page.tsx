@@ -23,7 +23,6 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  RefreshCw,
   Target,
   Award,
   BarChart3,
@@ -56,8 +55,6 @@ export default function StudentDashboard() {
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [liveStats, setLiveStats] = useState<{
@@ -80,7 +77,6 @@ export default function StudentDashboard() {
   const refreshData = useCallback(async () => {
     if (!user) return;
     
-    setIsRefreshing(true);
     try {
       const docRef = doc(db, 'students', user.uid);
       const docSnap = await getDoc(docRef);
@@ -140,12 +136,9 @@ export default function StudentDashboard() {
           setNotifications([]);
           setHasClassesAssigned(true);
         }
-        setLastUpdated(new Date());
       }
     } catch (error) {
       console.error("Failed to refresh student data:", error);
-    } finally {
-      setIsRefreshing(false);
     }
   }, [user, stats?.attendedClasses]);
 
@@ -433,18 +426,12 @@ export default function StudentDashboard() {
               <p className="text-slate-600 text-lg">
                 Here's your comprehensive attendance overview
               </p>
-              <div className="flex items-center gap-4 text-sm text-slate-500">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Last updated: {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+              {liveStats && (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Zap className="h-4 w-4" />
+                  Today: {liveStats.todayAttended}/{liveStats.todayTotal} classes
                 </div>
-                {liveStats && (
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    Today: {liveStats.todayAttended}/{liveStats.todayTotal} classes
-                  </div>
-                )}
-              </div>
+              )}
             </div>
             <div className="flex gap-3">
               <Button 
@@ -455,16 +442,6 @@ export default function StudentDashboard() {
               >
                 <Activity className={`h-4 w-4 ${isLiveMode ? 'animate-pulse' : ''}`} />
                 {isLiveMode ? '🔴 Live Mode' : 'Enable Live'}
-              </Button>
-              <Button 
-                onClick={refreshData} 
-                variant="outline" 
-                size="sm"
-                disabled={isRefreshing}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
               </Button>
               {isProfileComplete && (
                 <Button asChild variant="outline" size="sm" className="gap-2">
@@ -707,7 +684,7 @@ export default function StudentDashboard() {
               </TabsContent>
               
               <TabsContent value="live" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   <Card className={`border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 ${isNewAttendanceDetected ? 'ring-2 ring-blue-400 animate-pulse' : ''}`}>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
@@ -773,24 +750,6 @@ export default function StudentDashboard() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-orange-600">Last Update</p>
-                          <p className="text-lg font-bold text-orange-900">
-                            {lastUpdated.toLocaleTimeString()}
-                          </p>
-                          <p className="text-xs text-orange-700 mt-1">
-                            {isRefreshing ? 'Updating...' : 'Ready'}
-                          </p>
-                        </div>
-                        <div className="p-3 bg-orange-200 rounded-full">
-                          <Clock className="h-6 w-6 text-orange-600" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </TabsContent>
               

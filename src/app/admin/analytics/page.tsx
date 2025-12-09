@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic"; 
+
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -113,7 +115,7 @@ export default function AdminAnalyticsPage() {
           where('department', '==', adminProfile.department)
         );
         const studentsSnapshot = await getDocs(studentsQuery);
-        const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile));
+        const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentProfile & { id: string }));
 
         // Fetch teachers in department
         const teachersQuery = query(
@@ -121,7 +123,7 @@ export default function AdminAnalyticsPage() {
           where('department', '==', adminProfile.department)
         );
         const teachersSnapshot = await getDocs(teachersQuery);
-        const teachers = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherProfile));
+        const teachers = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherProfile & { id: string }));
 
         // Fetch classes in department
         const classesQuery = query(
@@ -280,7 +282,7 @@ export default function AdminAnalyticsPage() {
         userType="admin"
         userProfile={adminProfile}
       />
-      <main className="flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center justify-between">
           <div>
             <Button asChild variant="ghost" className="-ml-4 mb-2">

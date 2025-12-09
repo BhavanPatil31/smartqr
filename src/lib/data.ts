@@ -166,10 +166,23 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     // 1. Get all classes the student is enrolled in.
     const studentClasses = await getStudentClasses(department, semester);
     
-    // 2. Use a collection group query to efficiently fetch all attendance records for this student.
-    const recordsQuery = query(collectionGroup(db, 'records'), where('studentId', '==', studentId));
-    const recordsSnapshot = await getDocs(recordsQuery);
-    const allRecords = recordsSnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+    // 2. Query each class's records collection individually to avoid collection group query
+    const allRecords: AttendanceRecord[] = [];
+    
+    for (const classItem of studentClasses) {
+        try {
+            const recordsQuery = query(
+                collection(db, 'classes', classItem.id, 'records'), 
+                where('studentId', '==', studentId)
+            );
+            const recordsSnapshot = await getDocs(recordsQuery);
+            const classRecords = recordsSnapshot.docs.map(doc => doc.data() as AttendanceRecord);
+            allRecords.push(...classRecords);
+        } catch (error) {
+            console.warn(`Error fetching records for class ${classItem.id}:`, error);
+            // Continue with other classes even if one fails
+        }
+    }
     
     return { records: allRecords, studentClasses };
 };

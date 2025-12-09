@@ -308,7 +308,7 @@ export function NavigationMenu({
               </div>
               
               <Link
-                href="/help"
+                href={`/${userType}/help`}
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
               >
@@ -317,7 +317,7 @@ export function NavigationMenu({
               </Link>
               
               <Link
-                href="/about"
+                href={`/${userType}/about`}
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
               >

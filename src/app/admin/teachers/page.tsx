@@ -33,6 +33,7 @@ import Link from 'next/link';
 import type { TeacherProfile, AdminProfile, Class } from '@/lib/data';
 
 interface TeacherWithSubjects extends TeacherProfile {
+  id: string;
   subjects: string[];
   totalClasses: number;
   approvalStatus: 'approved' | 'pending' | 'rejected';
@@ -88,7 +89,7 @@ export default function AdminTeachersPage() {
         const teachersData = teachersSnapshot.docs.map(doc => ({ 
           id: doc.id, 
           ...doc.data() 
-        } as TeacherProfile));
+        } as TeacherProfile & { id: string }));
         
         // Fetch classes for each teacher to get their subjects
         const classesQuery = query(

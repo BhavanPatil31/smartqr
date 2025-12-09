@@ -49,8 +49,8 @@ export function AuthForm({ userType }: AuthFormProps) {
       try {
         // Create the user account
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-        // For teacher accounts, create a profile with approval status
+        
+        // Create profile document based on user type
         if (userType === 'teacher') {
           await setDoc(doc(db, 'teachers', userCredential.user.uid), {
             email: email,
@@ -67,17 +67,35 @@ export function AuthForm({ userType }: AuthFormProps) {
             description: 'Please complete your profile and submit for approval.',
           });
           router.push(`/${userType}/profile`);
-        } else {
-          // For non-teacher accounts, proceed as normal
-          toast({
-            title: 'Success',
-            description: 'Account created! Redirecting...',
+        } else if (userType === 'student') {
+          await setDoc(doc(db, 'students', userCredential.user.uid), {
+            email: email,
+            fullName: '',
+            usn: '',
+            phoneNumber: '',
+            semester: '',
+            department: '',
+            registeredAt: Date.now()
           });
-          if (userType === 'admin') {
-            router.push('/admin/profile');
-          } else {
-            router.push(`/${userType}/dashboard`);
-          }
+          
+          toast({
+            title: 'Account Created',
+            description: 'Please complete your profile.',
+          });
+          router.push(`/${userType}/profile`);
+        } else if (userType === 'admin') {
+          await setDoc(doc(db, 'admins', userCredential.user.uid), {
+            email: email,
+            fullName: '',
+            department: '',
+            registeredAt: Date.now()
+          });
+          
+          toast({
+            title: 'Account Created',
+            description: 'Please complete your profile.',
+          });
+          router.push(`/${userType}/profile`);
         }
       } catch (error: any) {
         toast({
@@ -89,8 +107,8 @@ export function AuthForm({ userType }: AuthFormProps) {
     } else { // Login
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-
-        // For teacher accounts, check approval status
+        
+        // Check profile completion and approval status based on user type
         if (userType === 'teacher') {
           const teacherDoc = await getDoc(doc(db, 'teachers', userCredential.user.uid));
 
@@ -112,6 +130,40 @@ export function AuthForm({ userType }: AuthFormProps) {
               setIsLoading(false);
               return;
             }
+          }
+        } else if (userType === 'student') {
+          const studentDoc = await getDoc(doc(db, 'students', userCredential.user.uid));
+          
+          if (studentDoc.exists()) {
+            const studentData = studentDoc.data();
+            // Check if profile is incomplete
+            if (!studentData.fullName || !studentData.usn || !studentData.department || !studentData.semester) {
+              router.push(`/${userType}/profile`);
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            // Profile doesn't exist, redirect to profile creation
+            router.push(`/${userType}/profile`);
+            setIsLoading(false);
+            return;
+          }
+        } else if (userType === 'admin') {
+          const adminDoc = await getDoc(doc(db, 'admins', userCredential.user.uid));
+          
+          if (adminDoc.exists()) {
+            const adminData = adminDoc.data();
+            // Check if profile is incomplete
+            if (!adminData.fullName || !adminData.department) {
+              router.push(`/${userType}/profile`);
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            // Profile doesn't exist, redirect to profile creation
+            router.push(`/${userType}/profile`);
+            setIsLoading(false);
+            return;
           }
         }
 
