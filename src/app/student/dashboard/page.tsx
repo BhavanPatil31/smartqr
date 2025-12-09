@@ -38,7 +38,7 @@ import {
   Settings
 } from 'lucide-react';
 import type { StudentProfile } from '@/lib/data';
-import { calculateStudentAttendanceStats, type AttendanceStats, getCorrectStudentAttendanceRecords, calculateStudentHistory } from '@/lib/client-stats';
+import { calculateStudentAttendanceStats, type AttendanceStats, getCorrectStudentAttendanceRecords, calculateStudentHistory, calculateStudentPerClassStats } from '@/lib/client-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AttendanceChart } from '@/components/AttendanceChart';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,7 @@ export default function StudentDashboard() {
   const [notifications, setNotifications] = useState<string[]>([]);
   const [subjectStats, setSubjectStats] = useState<any[]>([]);
   const [isNewAttendanceDetected, setIsNewAttendanceDetected] = useState(false);
+  const [hasClassesAssigned, setHasClassesAssigned] = useState<boolean>(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -118,14 +119,26 @@ export default function StudentDashboard() {
           const newNotifications = generateNotifications(attendanceStats, todayStats);
           setNotifications(newNotifications);
           
-          // Get subject-wise stats
-          const historyData = await calculateStudentHistory(user.uid);
-          setSubjectStats(historyData.subjectStats || []);
+          // Get per-class stats based on actual recorded sessions
+          const perClassStats = await calculateStudentPerClassStats(user.uid);
+          // Adapt to SubjectWiseAttendance expected shape
+          setSubjectStats(
+            perClassStats.map(s => ({ subject: s.subject, attended: s.attended, total: s.total }))
+          );
+
+          // Determine if the student has any classes assigned
+          try {
+            const { studentClasses } = await getCorrectStudentAttendanceRecords(user.uid);
+            setHasClassesAssigned(studentClasses.length > 0);
+          } catch {
+            setHasClassesAssigned(true);
+          }
         } else {
           setStats(null);
           setLiveStats(null);
           setRecentActivity([]);
           setNotifications([]);
+          setHasClassesAssigned(true);
         }
         setLastUpdated(new Date());
       }
@@ -230,41 +243,19 @@ export default function StudentDashboard() {
   // Helper functions for live data
   const calculateTodayStats = async (studentId: string, today: string) => {
     try {
-      const { records } = await getCorrectStudentAttendanceRecords(studentId);
+      const { records, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
       const todayRecords = records.filter(record => 
         new Date(record.timestamp).toISOString().split('T')[0] === today
       );
-      
-      // Get student profile to determine their classes
-      const studentDocRef = doc(db, 'students', studentId);
-      const studentDocSnap = await getDoc(studentDocRef);
-      
+      // Count sessions that actually exist today for the student's assigned classes
       let totalClassesToday = 0;
-      if (studentDocSnap.exists()) {
-        const studentProfile = studentDocSnap.data() as StudentProfile;
-        if (studentProfile.department && studentProfile.semester) {
-          // Get today's day of week
-          const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-          
-          // Query classes for this student's department and semester
-          const classesQuery = query(
-            collection(db, 'classes'),
-            where('department', '==', studentProfile.department),
-            where('semester', '==', studentProfile.semester)
-          );
-          
-          const classesSnapshot = await getDocs(classesQuery);
-          
-          // Count classes scheduled for today
-          classesSnapshot.docs.forEach((doc: any) => {
-            const classData = doc.data();
-            if (classData.schedules) {
-              const todaySchedules = classData.schedules.filter((schedule: any) => 
-                schedule.day === dayOfWeek
-              );
-              totalClassesToday += todaySchedules.length;
-            }
-          });
+      for (const classItem of studentClasses) {
+        try {
+          const attendanceCollectionRef = collection(db, 'classes', classItem.id, 'attendance', today, 'records');
+          const snapshot = await getDocs(attendanceCollectionRef);
+          if (!snapshot.empty) totalClassesToday += 1;
+        } catch {
+          // ignore
         }
       }
       
@@ -501,7 +492,30 @@ export default function StudentDashboard() {
           )}
         </div>
         
-        {isProfileComplete && stats ? (
+        {isProfileComplete && !hasClassesAssigned && (
+          <div className="mb-8">
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>No classes assigned yet</CardTitle>
+                <CardDescription>
+                  Once your teacher assigns you to classes, your attendance will appear here.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <Button asChild>
+                    <Link href="/student/classes">Go to My Classes</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/student/notifications">View Notifications</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {isProfileComplete && stats && hasClassesAssigned ? (
           <div className="space-y-8">
             {/* Live Analytics Section */}
             <Tabs defaultValue="overview" className="w-full">

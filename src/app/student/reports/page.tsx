@@ -30,7 +30,7 @@ import {
 import Link from 'next/link';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, subWeeks } from 'date-fns';
 import type { StudentProfile, AttendanceRecord, Class } from '@/lib/data';
-import { calculateStudentAttendanceStats, getCorrectStudentAttendanceRecords } from '@/lib/data';
+import { calculateStudentAttendanceStats, getCorrectStudentAttendanceRecords } from '@/lib/client-stats';
 
 interface AttendanceStats {
   overall: {
@@ -71,6 +71,7 @@ export default function StudentReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasClassesAssigned, setHasClassesAssigned] = useState<boolean>(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -105,6 +106,7 @@ export default function StudentReportsPage() {
         
         // Get detailed records for analysis
         const { records, studentClasses } = await getCorrectStudentAttendanceRecords(user.uid);
+        setHasClassesAssigned(studentClasses.length > 0);
         
         // Calculate weekly trend (last 4 weeks)
         const weeklyData = calculateWeeklyTrend(records);
@@ -328,8 +330,25 @@ export default function StudentReportsPage() {
           </div>
         </div>
 
+        {/* No classes assigned state */}
+        {!hasClassesAssigned && (
+          <div className="mb-6">
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>No classes assigned yet</CardTitle>
+                <CardDescription>Ask your teacher to assign you to classes. Reports will appear once classes are assigned.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href="/student/classes">Go to My Classes</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Overview Stats */}
-        {attendanceStats && (
+        {attendanceStats && hasClassesAssigned && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

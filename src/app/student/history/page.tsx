@@ -293,6 +293,21 @@ export default function StudentHistoryPage() {
                     </div>
                 </div>
 
+                {/* No classes assigned state */}
+                {studentClasses.length === 0 && (
+                    <Card className="border-dashed">
+                        <CardHeader>
+                            <CardTitle>No classes assigned yet</CardTitle>
+                            <CardDescription>Once you are assigned to classes, your attendance history will appear here.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button asChild>
+                                <Link href="/student/classes">Go to My Classes</Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Summary Stats */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>

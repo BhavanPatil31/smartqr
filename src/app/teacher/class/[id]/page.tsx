@@ -111,7 +111,8 @@ export default function TeacherClassPage() {
         const currentUser = auth.currentUser;
         
         if (!currentUser || classData.teacherId !== currentUser.uid) {
-          console.error('Access denied to class:', classId);
+          // Gracefully handle lack of permission without noisy console errors
+          toast({ title: 'Access denied', description: 'You do not have permission to view this class.', variant: 'destructive' });
           return null;
         }
         

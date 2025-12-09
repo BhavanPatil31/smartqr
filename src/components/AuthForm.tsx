@@ -35,7 +35,7 @@ export function AuthForm({ userType }: AuthFormProps) {
 
   const handleAuthAction = async (action: 'login' | 'register') => {
     setIsLoading(true);
-    
+
     if (action === 'register') {
       if (password !== confirmPassword) {
         toast({
@@ -49,7 +49,7 @@ export function AuthForm({ userType }: AuthFormProps) {
       try {
         // Create the user account
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
+
         // For teacher accounts, create a profile with approval status
         if (userType === 'teacher') {
           await setDoc(doc(db, 'teachers', userCredential.user.uid), {
@@ -61,7 +61,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             isApprovalRequested: false,
             registeredAt: Date.now()
           });
-          
+
           toast({
             title: 'Account Created',
             description: 'Please complete your profile and submit for approval.',
@@ -71,9 +71,13 @@ export function AuthForm({ userType }: AuthFormProps) {
           // For non-teacher accounts, proceed as normal
           toast({
             title: 'Success',
-            description: 'Account created! Redirecting to dashboard...',
+            description: 'Account created! Redirecting...',
           });
-          router.push(`/${userType}/dashboard`);
+          if (userType === 'admin') {
+            router.push('/admin/profile');
+          } else {
+            router.push(`/${userType}/dashboard`);
+          }
         }
       } catch (error: any) {
         toast({
@@ -85,11 +89,11 @@ export function AuthForm({ userType }: AuthFormProps) {
     } else { // Login
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        
+
         // For teacher accounts, check approval status
         if (userType === 'teacher') {
           const teacherDoc = await getDoc(doc(db, 'teachers', userCredential.user.uid));
-          
+
           if (teacherDoc.exists()) {
             const teacherData = teacherDoc.data();
             const requested = Boolean((teacherData as any).isApprovalRequested);
@@ -110,7 +114,7 @@ export function AuthForm({ userType }: AuthFormProps) {
             }
           }
         }
-        
+
         toast({
           title: 'Login Successful!',
           description: 'Redirecting to your dashboard...',
@@ -124,28 +128,28 @@ export function AuthForm({ userType }: AuthFormProps) {
         });
       }
     }
-    
+
     setIsLoading(false);
   };
-  
+
   const FormSkeleton = () => (
-     <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
-        <CardHeader>
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-full mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-1/4" />
-                <Skeleton className="h-10 w-full" />
-            </div>
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/4" />
-                <Skeleton className="h-10 w-full" />
-            </div>
-            <Skeleton className="h-10 w-full" />
-        </CardContent>
-     </Card>
+    <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm">
+      <CardHeader>
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-4 w-full mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </CardContent>
+    </Card>
   );
 
   const titleCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
@@ -158,7 +162,7 @@ export function AuthForm({ userType }: AuthFormProps) {
           <span className="font-bold text-xl">SmartQR</span>
         </Link>
       </div>
-      
+
       {!isClient ? <FormSkeleton /> : (
         <Tabs defaultValue="login" className="w-full max-w-sm">
           <TabsList className="grid w-full grid-cols-2">
@@ -188,33 +192,33 @@ export function AuthForm({ userType }: AuthFormProps) {
               </CardContent>
             </Card>
           </TabsContent>
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">{titleCase(userType)} Registration</CardTitle>
-                  <CardDescription>Create an account to get started.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('register'); }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email-register">Email</Label>
-                      <Input id="email-register" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password-register">Password</Label>
-                      <Input id="password-register" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Creating Account...' : 'Create Account'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
+          <TabsContent value="register">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">{titleCase(userType)} Registration</CardTitle>
+                <CardDescription>Create an account to get started.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={(e) => { e.preventDefault(); handleAuthAction('register'); }} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-register">Email</Label>
+                    <Input id="email-register" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password-register">Password</Label>
+                    <Input id="password-register" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input id="confirm-password" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       )}
     </main>

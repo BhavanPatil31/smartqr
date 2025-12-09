@@ -4,6 +4,15 @@ import { eachDayOfInterval, getDay, parseISO, startOfDay, format } from 'date-fn
 import type { AttendanceRecord, Class, StudentProfile } from './data';
 import { getStudentClasses } from './data';
 
+// New: Structures for per-class aggregation that reflects what students actually attended
+export interface PerClassAttendanceStat {
+    classId: string;
+    subject: string;
+    attended: number;
+    total: number;
+    percentage: number;
+}
+
 const DAY_MAP: { [key: string]: number } = {
     "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6,
 };
@@ -64,35 +73,66 @@ export const getCorrectStudentAttendanceRecords = async (studentId: string): Pro
     return { records: allRecords, studentClasses };
 };
 
+// New: Count how many sessions actually exist per class by reading `classes/{id}/attendance` dates
+async function getClassSessionCounts(studentClasses: Class[]): Promise<Record<string, number>> {
+    const classIdToSessionCount: Record<string, number> = {};
+    for (const classItem of studentClasses) {
+        try {
+            const attendanceCollectionRef = collection(db, 'classes', classItem.id, 'attendance');
+            const attendanceSnapshot = await getDocs(attendanceCollectionRef);
+            classIdToSessionCount[classItem.id] = attendanceSnapshot.size;
+        } catch {
+            classIdToSessionCount[classItem.id] = 0;
+        }
+    }
+    return classIdToSessionCount;
+}
+
+// New: Compute per-class stats purely from recorded sessions and the student's own records
+export const calculateStudentPerClassStats = async (studentId: string): Promise<PerClassAttendanceStat[]> => {
+    const { records, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
+    if (studentClasses.length === 0) return [];
+
+    const sessionCounts = await getClassSessionCounts(studentClasses);
+
+    const statsByClass: Record<string, PerClassAttendanceStat> = {};
+    for (const classItem of studentClasses) {
+        const total = sessionCounts[classItem.id] ?? 0;
+        const attended = records.filter(r => r.classId === classItem.id).length;
+        const percentage = total > 0 ? Math.round((attended / total) * 100) : 0;
+        statsByClass[classItem.id] = {
+            classId: classItem.id,
+            subject: classItem.subject,
+            attended,
+            total,
+            percentage
+        };
+    }
+
+    return Object.values(statsByClass).sort((a, b) => a.subject.localeCompare(b.subject));
+};
+
 export const calculateStudentAttendanceStats = async (studentId: string): Promise<AttendanceStats> => {
     try {
         const { records: attendanceRecords, studentClasses } = await getCorrectStudentAttendanceRecords(studentId);
 
-        let totalClassesHeld = 0;
-        
-        const semesterStartDate = startOfDay(parseISO('2024-07-15'));
-        const today = startOfDay(new Date());
-        
-        if (today >= semesterStartDate && studentClasses.length > 0) {
-            const daysInSemesterSoFar = eachDayOfInterval({
-                start: semesterStartDate,
-                end: today
-            });
-
-            studentClasses.forEach(c => {
-                daysInSemesterSoFar.forEach(day => {
-                    const dayOfWeek = getDay(day); // 0 for Sunday, 1 for Monday, etc.
-                    const relevantSchedules = c.schedules.filter(schedule => DAY_MAP[schedule.day] === dayOfWeek);
-                    totalClassesHeld += relevantSchedules.length;
-                });
-            });
+        // If no classes are assigned yet, show zeros across the board (do not infer totals)
+        if (studentClasses.length === 0) {
+            return {
+                totalClasses: 0,
+                attendedClasses: 0,
+                missedClasses: 0,
+                attendanceRate: 0
+            };
         }
-        
+
+        // Derive total sessions actually held from existing attendance documents
+        const sessionCounts = await getClassSessionCounts(studentClasses);
+        const totalClasses = Object.values(sessionCounts).reduce((sum, n) => sum + n, 0);
         const attendedClasses = attendanceRecords.length;
-        const totalClasses = Math.max(totalClassesHeld, attendedClasses);
         const missedClasses = Math.max(0, totalClasses - attendedClasses);
         const attendanceRate = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
-        
+
         return {
             totalClasses,
             attendedClasses,

@@ -5,17 +5,17 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import { Header } from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { 
-  BookOpen, 
-  Users, 
-  GraduationCap, 
-  Settings, 
+import {
+  BookOpen,
+  Users,
+  GraduationCap,
+  Settings,
   BarChart3,
   Clock,
   CheckCircle,
@@ -76,23 +76,45 @@ export default function AdminDashboard() {
           setProfile(adminProfile);
 
           if (adminProfile.department) {
-            // Fetch department statistics
-            const [studentsSnapshot, teachersSnapshot, classesSnapshot] = await Promise.all([
-              getDocs(query(collection(db, 'students'), where('department', '==', adminProfile.department))),
-              getDocs(query(collection(db, 'teachers'), where('department', '==', adminProfile.department))),
-              getDocs(query(collection(db, 'classes'), where('department', '==', adminProfile.department)))
+            // Fetch department statistics using optimized queries
+            // 1. Students: Just count (biggest optimization)
+            // 2. Teachers: Fetch all (small collection, complex logic for pending)
+            // 3. Classes: Count total + Count active (optimized)
+
+            const studentsQuery = query(collection(db, 'students'), where('department', '==', adminProfile.department));
+            const teachersQuery = query(collection(db, 'teachers'), where('department', '==', adminProfile.department));
+            const classesQuery = query(collection(db, 'classes'), where('department', '==', adminProfile.department));
+
+            // For active QR codes, we use a query. Note: This requires an index on [department, qrCodeExpiresAt].
+            // If index is missing, this might fail. But it's much faster than fetching all classes.
+            const activeClassesQuery = query(
+              collection(db, 'classes'),
+              where('department', '==', adminProfile.department),
+              where('qrCodeExpiresAt', '>', Date.now())
+            );
+
+            const [
+              studentsCountSnap,
+              teachersSnapshot,
+              classesCountSnap,
+              activeClassesCountSnap
+            ] = await Promise.all([
+              getCountFromServer(studentsQuery),
+              getDocs(teachersQuery),
+              getCountFromServer(classesQuery),
+              getCountFromServer(activeClassesQuery).catch(e => {
+                console.warn("Failed to count active classes (likely missing index). Falling back to 0.", e);
+                return { data: () => ({ count: 0 }) };
+              })
             ]);
 
-            const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as StudentProfile));
             const teachers = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as TeacherProfile));
-            const classes = classesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as Class));
 
             // Calculate stats
             const pendingApprovals = teachers.filter(t => t.isApproved !== true).length;
-            const activeQRCodes = classes.filter(c => {
-              if (!c.qrCodeExpiresAt) return false;
-              return Date.now() < c.qrCodeExpiresAt;
-            }).length;
+
+            // Use the count from server
+            const activeQRCodes = activeClassesCountSnap.data().count;
 
             // Generate recent activity (placeholder)
             const recentActivity = [
@@ -102,9 +124,9 @@ export default function AdminDashboard() {
             ];
 
             const dashboardStats: DashboardStats = {
-              totalStudents: students.length,
+              totalStudents: studentsCountSnap.data().count,
               totalTeachers: teachers.length,
-              totalClasses: classes.length,
+              totalClasses: classesCountSnap.data().count,
               pendingApprovals,
               todayAttendanceRate: Math.random() * 30 + 70, // Placeholder
               activeQRCodes,
@@ -113,6 +135,10 @@ export default function AdminDashboard() {
 
             setStats(dashboardStats);
           }
+        } else {
+          // User is not an admin or profile is missing
+          console.log("Admin profile missing, redirecting to profile creation...");
+          router.push('/admin/profile');
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -167,11 +193,11 @@ export default function AdminDashboard() {
       </div>
     );
   }
-  
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Header 
-        onLogout={handleLogout} 
+      <Header
+        onLogout={handleLogout}
         user={user}
         userType="admin"
         userProfile={profile}
@@ -395,7 +421,7 @@ export default function AdminDashboard() {
                     {stats.activeQRCodes} active
                   </Badge>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-blue-600" />
@@ -433,10 +459,10 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   {stats.recentActivity.map((activity, index) => {
                     const Icon = activity.type === 'class_created' ? BookOpen :
-                                activity.type === 'teacher_approved' ? CheckCircle : Users;
+                      activity.type === 'teacher_approved' ? CheckCircle : Users;
                     const colorClass = activity.type === 'class_created' ? 'text-blue-600' :
-                                      activity.type === 'teacher_approved' ? 'text-green-600' : 'text-purple-600';
-                    
+                      activity.type === 'teacher_approved' ? 'text-green-600' : 'text-purple-600';
+
                     return (
                       <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
                         <Icon className={`h-4 w-4 ${colorClass}`} />
